@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { useAppStore } from './store/useAppStore';
+import { insforge } from './lib/insforge';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -20,8 +23,49 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const initDb = useAppStore(state => state.initDb);
+  const login = useAppStore(state => state.login);
+
+  useEffect(() => {
+    // Initial fetch
+    initDb();
+
+    // Setup Auth Check
+    insforge.auth.getCurrentUser().then(({ data: { user } }) => {
+      if (user) {
+        // Fetch profile
+        insforge.database.from('profiles').select('*').eq('id', user.id).single().then(({ data: profile }) => {
+          if (profile) {
+            login({ id: user.id, name: profile.name, role: profile.role, outletId: profile.outlet_id });
+          }
+        });
+      }
+    });
+
+  }, [initDb, login]);
+
   return (
     <Router>
+      <Toaster 
+        position="top-center" 
+        reverseOrder={false} 
+        toastOptions={{
+          success: {
+            style: {
+              background: 'rgba(16, 185, 129, 0.9)',
+              color: '#fff',
+              boxShadow: '0 0 20px rgba(16, 185, 129, 0.6)',
+              fontWeight: '600',
+              border: '1px solid rgba(16, 185, 129, 1)',
+              backdropFilter: 'blur(8px)'
+            },
+            iconTheme: {
+              primary: '#fff',
+              secondary: '#10b981',
+            },
+          },
+        }}
+      />
       <Routes>
         <Route path="/login" element={<Login />} />
         

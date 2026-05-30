@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useAppStore';
-import { MOCK_SERVICES, MOCK_PRODUCTS, MOCK_BARBERS } from '../store/mockData';
-import { ShoppingCart, Trash2, CheckCircle, User, ShieldAlert, X, Plus } from 'lucide-react';
+import { ShoppingCart, Trash2, CheckCircle, User, ShieldAlert, X, Plus, Printer, MessageCircle, Send } from 'lucide-react';
+import type { Transaction } from '../types';
 
 interface CartItem {
   id: string;
@@ -11,13 +12,15 @@ interface CartItem {
   qty: number;
   type: 'service' | 'product';
   kapsterId?: string;
+  commissionType?: 'percentage' | 'nominal';
+  commissionValue?: number;
 }
 
 export default function POS() {
   const navigate = useNavigate();
-  const { activeShift, activeOutlet, addTransaction } = useAppStore();
+  const { activeShift, activeOutlet, addTransaction, kapsters, user, systemUsers, services, products } = useAppStore();
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedKapster, setSelectedKapster] = useState<string>('');
+  const [selectedKapsterId, setSelectedKapsterId] = useState<string>('');
 
   // Payment Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -25,6 +28,14 @@ export default function POS() {
   const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
   const [splitPayments, setSplitPayments] = useState<{method: string, amount: number}[]>([]);
   const [tipAmount, setTipAmount] = useState<number>(0);
+
+  // Receipt Modal State
+  const [completedTransaction, setCompletedTransaction] = useState<Transaction | null>(null);
+
+  // WhatsApp Modal State
+  const [showWaModal, setShowWaModal] = useState(false);
+  const [waPhone, setWaPhone] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   if (activeShift?.status !== 'open') {
     return (
@@ -69,23 +80,22 @@ export default function POS() {
   }
 
   const addToCart = (item: any, type: 'service' | 'product') => {
-    if (type === 'service' && !selectedKapster) {
-      alert('Pilih Kapster terlebih dahulu untuk melayani jasa/layanan!');
+    if (type === 'service' && !selectedKapsterId) {
+      toast.error('Pilih Kapster terlebih dahulu untuk melayani jasa/layanan!');
       return;
     }
 
-    const existing = cart.find(c => c.id === item.id && c.kapsterId === selectedKapster);
+    const existing = cart.find(c => c.id === item.id && c.kapsterId === selectedKapsterId);
     if (existing) {
-      setCart(cart.map(c => c.id === item.id && c.kapsterId === selectedKapster ? { ...c, qty: c.qty + 1 } : c));
+      setCart(cart.map(c => c.id === item.id && c.kapsterId === selectedKapsterId ? { ...c, qty: c.qty + 1 } : c));
     } else {
       setCart([...cart, { 
-        id: item.id, 
-        name: item.name, 
-        price: item.price, 
+        ...item, 
         qty: 1, 
         type, 
-        kapsterId: type === 'service' ? selectedKapster : undefined,
-        commissionRate: type === 'service' ? item.commissionRate : undefined
+        kapsterId: type === 'service' ? selectedKapsterId : undefined,
+        commissionType: type === 'service' ? (item.commissionType || 'percentage') : undefined,
+        commissionValue: type === 'service' ? (item.commissionValue || 0) : undefined
       }]);
     }
   };
@@ -103,7 +113,7 @@ export default function POS() {
   const remainingBill = Math.max(0, total - totalPaid);
 
   const openPaymentModal = () => {
-    if (cart.length === 0) return alert('Keranjang transaksi Anda masih kosong!');
+    if (cart.length === 0) return toast.error('Keranjang transaksi Anda masih kosong!');
     setIsPaymentModalOpen(true);
     setSplitPayments([]);
     setPaymentAmount(total);
@@ -117,14 +127,14 @@ export default function POS() {
     setPaymentAmount(newRemaining > 0 ? newRemaining : '');
   };
 
-  const handleFinishTransaction = () => {
+  const handleFinishTransaction = async () => {
     if (totalPaid + Number(paymentAmount || 0) < total) {
-      return alert('Total pembayaran belum mencukupi tagihan!');
+      return toast.error('Total pembayaran belum mencukupi tagihan!');
     }
 
+    setIsProcessing(true);
     const transactionMethod = splitPayments.length > 0 ? 'Split Payment' : paymentMethod;
-    
-    addTransaction({
+    const newTransaction: Transaction = {
       id: `trx-${Date.now()}`,
       date: new Date().toISOString(),
       items: cart,
@@ -134,13 +144,120 @@ export default function POS() {
       total,
       method: transactionMethod,
       customerName: 'Pelanggan Walk-in'
-    });
+    };
+    
+    try {
+      await addTransaction(newTransaction);
+      setCompletedTransaction(newTransaction);
+      setCart([]);
+      setIsPaymentModalOpen(false);
+      setTipAmount(0);
+      setSplitPayments([]);
+      toast.success('Transaksi berhasil!');
+    } catch (e: any) {
+      toast.error('Gagal mencatat transaksi: ' + e.message);
+    }
+    setIsProcessing(false);
+  };
 
-    alert(`Transaksi Berhasil Diselesaikan!\nTotal Pembayaran: Rp ${total.toLocaleString('id-ID')}\nMetode: ${transactionMethod}\nKomisi Kapster otomatis dicatat ke sistem.`);
-    setCart([]);
-    setIsPaymentModalOpen(false);
-    setTipAmount(0);
-    setSplitPayments([]);
+  const getCashierName = () => {
+    if (!activeShift) return 'Admin';
+    const found = systemUsers.find(u => u.id === activeShift.cashierId);
+    return found ? found.name : (user?.name || 'Admin');
+  };
+
+  const getKapsterName = (kapsterId?: string) => {
+    if (!kapsterId) return '-';
+    const found = kapsters.find(k => k.id === kapsterId);
+    return found ? found.name : kapsterId;
+  };
+
+  const handlePrintReceipt = () => {
+    const receiptEl = document.getElementById('receipt-paper');
+    if (!receiptEl) return;
+
+    const printWindow = window.open('', '_blank', 'width=400,height=700');
+    if (!printWindow) return;
+
+    const receiptHTML = receiptEl.innerHTML;
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Struk Pembayaran</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @page { margin: 0; size: 80mm auto; }
+  body {
+    width: 80mm;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    color: #000;
+    background: #fff;
+    padding: 10px 12px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  h2, h3, p, span, div { font-family: 'Courier New', Courier, monospace; color: #000; }
+  div { display: block; }
+</style>
+</head>
+<body>${receiptHTML}</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 400);
+  };
+
+  const handleWhatsAppReceipt = () => {
+    if (!completedTransaction) return;
+    setWaPhone('');
+    setShowWaModal(true);
+  };
+
+  const executeWhatsAppSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!completedTransaction) return;
+    
+    // Clean phone number (remove spaces, dashes)
+    let cleanedPhone = waPhone.replace(/[\s-]/g, '');
+    if (cleanedPhone.startsWith('0')) {
+      cleanedPhone = '62' + cleanedPhone.substring(1);
+    }
+    
+    let text = `*STRUK PEMBAYARAN - ${activeOutlet?.name?.toUpperCase() || 'BARBERTOPIA'}*\n`;
+    text += `ID: ${completedTransaction.id}\n`;
+    text += `Waktu: ${new Date(completedTransaction.date).toLocaleString('id-ID')}\n`;
+    text += `--------------------------------\n`;
+    
+    completedTransaction.items.forEach(item => {
+      text += `${item.name} (x${item.qty})\n`;
+      text += `Rp ${(item.price * item.qty).toLocaleString('id-ID')}\n`;
+    });
+    
+    text += `--------------------------------\n`;
+    text += `Subtotal: Rp ${completedTransaction.subtotal.toLocaleString('id-ID')}\n`;
+    text += `Pajak: Rp ${completedTransaction.tax.toLocaleString('id-ID')}\n`;
+    if (completedTransaction.tip > 0) {
+      text += `Tip: Rp ${completedTransaction.tip.toLocaleString('id-ID')}\n`;
+    }
+    text += `*TOTAL: Rp ${completedTransaction.total.toLocaleString('id-ID')}*\n`;
+    text += `Metode: ${completedTransaction.method}\n`;
+    text += `--------------------------------\n`;
+    text += `Terima kasih atas kunjungan Anda!`;
+
+    const encodedText = encodeURIComponent(text);
+    const waUrl = cleanedPhone ? `https://wa.me/${cleanedPhone}?text=${encodedText}` : `https://wa.me/?text=${encodedText}`;
+    window.open(waUrl, '_blank');
+    setShowWaModal(false);
+  };
+
+  const closeReceiptAndContinue = () => {
+    setCompletedTransaction(null);
   };
 
   return (
@@ -163,12 +280,12 @@ export default function POS() {
             Pilih Kapster / Barber (Wajib untuk Layanan)
           </h3>
           <div style={{ display: 'flex', gap: '12px' }}>
-            {MOCK_BARBERS.map(b => {
-              const isSelected = selectedKapster === b.id;
+            {kapsters.filter(k => k.status === 'active').map(b => {
+              const isSelected = selectedKapsterId === b.id;
               return (
                 <button
                   key={b.id}
-                  onClick={() => setSelectedKapster(b.id)}
+                  onClick={() => setSelectedKapsterId(b.id)}
                   style={{
                     flex: 1,
                     padding: '10px 16px',
@@ -206,7 +323,7 @@ export default function POS() {
             Daftar Layanan & Jasa
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
-            {MOCK_SERVICES.map(srv => (
+            {services.map(srv => (
               <button 
                 key={srv.id} 
                 className="card" 
@@ -249,7 +366,7 @@ export default function POS() {
             Produk Ritel Barbershop
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
-            {MOCK_PRODUCTS.map(prd => (
+            {products.map(prd => (
               <button 
                 key={prd.id} 
                 className="card" 
@@ -333,7 +450,7 @@ export default function POS() {
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {cart.map((item, index) => {
-                const kapster = MOCK_BARBERS.find(b => b.id === item.kapsterId);
+                const kapster = kapsters.find(b => b.id === item.kapsterId);
                 return (
                   <li 
                     key={index} 
@@ -504,7 +621,7 @@ export default function POS() {
                 
                 {/* Sisa Tagihan Box */}
                 <div style={{ 
-                  backgroundColor: '#1a1a1c', 
+                  backgroundColor: '#071a11', 
                   border: '1px solid rgba(255,255,255,0.05)', 
                   borderRadius: '8px', 
                   padding: '16px',
@@ -525,7 +642,7 @@ export default function POS() {
                   <select 
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    style={{ width: '100%', padding: '12px', fontSize: '1rem', backgroundColor: '#1a1a1c', border: '1px solid rgba(255,255,255,0.05)' }}
+                    style={{ width: '100%', padding: '12px', fontSize: '1rem', backgroundColor: '#071a11', border: '1px solid rgba(255,255,255,0.05)' }}
                   >
                     <option value="Uang Tunai (Cash)">Uang Tunai (Cash)</option>
                     <option value="QRIS / E-Wallet">QRIS / E-Wallet</option>
@@ -541,7 +658,7 @@ export default function POS() {
                     type="number" 
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value ? Number(e.target.value) : '')}
-                    style={{ width: '100%', padding: '12px', fontSize: '1.1rem', backgroundColor: '#1a1a1c', border: '1px solid rgba(255,255,255,0.05)' }}
+                    style={{ width: '100%', padding: '12px', fontSize: '1.1rem', backgroundColor: '#071a11', border: '1px solid rgba(255,255,255,0.05)' }}
                   />
                   
                   {/* Quick Pills */}
@@ -576,7 +693,7 @@ export default function POS() {
                     style={{ 
                       width: '100%', 
                       padding: '14px', 
-                      backgroundColor: '#1a1a1c', 
+                      backgroundColor: '#071a11', 
                       border: '1px solid rgba(255,255,255,0.08)', 
                       borderRadius: '8px',
                       color: 'var(--color-white)',
@@ -588,7 +705,7 @@ export default function POS() {
                       transition: 'background-color 0.2s'
                     }}
                     onMouseOver={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-                    onMouseOut={e => e.currentTarget.style.backgroundColor = '#1a1a1c'}
+                    onMouseOut={e => e.currentTarget.style.backgroundColor = '#071a11'}
                   >
                     <Plus size={18} /> Tambah Pembayaran (Split)
                   </button>
@@ -665,9 +782,9 @@ export default function POS() {
                       opacity: (totalPaid + Number(paymentAmount || 0)) < total ? 0.6 : 1,
                       cursor: (totalPaid + Number(paymentAmount || 0)) < total ? 'not-allowed' : 'pointer'
                     }}
-                    disabled={(totalPaid + Number(paymentAmount || 0)) < total}
+                    disabled={(totalPaid + Number(paymentAmount || 0)) < total || isProcessing}
                   >
-                    Selesaikan Transaksi <CheckCircle size={18} />
+                    {isProcessing ? 'Memproses...' : <>Selesaikan Transaksi <CheckCircle size={18} /></>}
                   </button>
                 </div>
 
@@ -677,6 +794,247 @@ export default function POS() {
           </div>
         </div>
       )}
+
+      {/* WhatsApp Input Modal */}
+      {showWaModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 99999
+        }}>
+          <form onSubmit={executeWhatsAppSend} style={{
+            background: 'var(--color-card)',
+            border: '1px solid var(--color-card-border)',
+            borderRadius: '16px',
+            padding: '32px',
+            width: '100%',
+            maxWidth: '400px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '24px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: '50%',
+                  background: 'rgba(37, 211, 102, 0.1)', color: '#25D366',
+                  display: 'flex', justifyContent: 'center', alignItems: 'center'
+                }}>
+                  <MessageCircle size={20} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--color-text-primary)' }}>Kirim via WhatsApp</h3>
+              </div>
+              <button type="button" onClick={() => setShowWaModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>Nomor WhatsApp Pelanggan</label>
+              <input 
+                type="tel"
+                value={waPhone}
+                onChange={(e) => setWaPhone(e.target.value)}
+                placeholder="0812... atau 62812..."
+                required
+                autoFocus
+                style={{
+                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '12px 16px', borderRadius: '8px', color: 'var(--color-text-primary)', fontSize: '1rem'
+                }}
+              />
+            </div>
+            
+            <button type="submit" style={{
+              background: '#25D366', border: 'none', padding: '14px', borderRadius: '8px',
+              color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px'
+            }}>
+              <Send size={18} />
+              Kirim Struk
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Receipt Modal */}
+      {completedTransaction && (
+        <div className="receipt-modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.95)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 2000,
+        }}>
+          {/* Header */}
+          <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-white)', margin: 0 }}>Transaksi Berhasil!</h2>
+            <button onClick={closeReceiptAndContinue} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Receipt Wrapper */}
+          <div className="no-print-wrapper" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
+            
+            {/* The Actual Receipt Paper */}
+            <div id="receipt-paper" style={{
+              width: '100%',
+              maxWidth: '380px',
+              backgroundColor: '#fff',
+              color: '#000',
+              fontFamily: "'Courier New', Courier, monospace",
+              padding: '30px 24px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+              position: 'relative'
+            }}>
+              {/* Receipt Content */}
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <h2 style={{ margin: '0 0 6px 0', fontSize: '16px', letterSpacing: '2px', fontWeight: 'bold', textTransform: 'uppercase' }}>{activeOutlet?.name || ''}</h2>
+                <p style={{ margin: 0, fontSize: '11px', color: '#333' }}>{activeOutlet?.address || ''}</p>
+                {activeOutlet?.phone && <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#333' }}>Telp: {activeOutlet.phone}</p>}
+              </div>
+              
+              <div style={{ borderBottom: '1px dashed #000', margin: '14px 0' }}></div>
+              
+              <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between' }}>
+                <div>
+                  <div>No: {completedTransaction.id.substring(0, 14)}</div>
+                  <div style={{ marginTop: '6px' }}>Kasir: {getCashierName()}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div>{new Date(completedTransaction.date).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+                  <div style={{ marginTop: '6px' }}>Status: LUNAS</div>
+                </div>
+              </div>
+              
+              <div style={{ borderBottom: '1px dashed #000', margin: '14px 0' }}></div>
+              
+              <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {completedTransaction.items.map((item, idx) => (
+                  <div key={idx}>
+                    <div style={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{item.name}</span>
+                      <span>Rp {(item.price).toLocaleString('id-ID')}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#555', marginTop: '4px', fontSize: '10px' }}>
+                      <span>{item.type === 'service' ? `Kapster: ${getKapsterName(item.kapsterId)}` : 'Produk'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', color: '#555', marginTop: '2px', fontSize: '10px' }}>
+                      <span>{item.qty} x Rp {item.price.toLocaleString('id-ID')}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ borderBottom: '1px dashed #000', margin: '14px 0' }}></div>
+              
+              <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                  <span>Subtotal:</span>
+                  <span>Rp {completedTransaction.subtotal.toLocaleString('id-ID')}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                  <span>Pajak PPN ({activeOutlet?.taxRate || 10}%):</span>
+                  <span>Rp {completedTransaction.tax.toLocaleString('id-ID')}</span>
+                </div>
+                {completedTransaction.tip > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                    <span>Tip Kapster:</span>
+                    <span>Rp {completedTransaction.tip.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ borderBottom: '1px solid #000', margin: '10px 0' }}></div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', margin: '10px 0' }}>
+                <span>TOTAL BILL:</span>
+                <span>Rp {completedTransaction.total.toLocaleString('id-ID')}</span>
+              </div>
+              
+              <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+
+              <div style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', color: '#333' }}>
+                <span>{completedTransaction.method.toUpperCase()}:</span>
+                <span>Rp {completedTransaction.total.toLocaleString('id-ID')}</span>
+              </div>
+              
+              <div style={{ borderBottom: '1px dashed #000', margin: '14px 0' }}></div>
+              
+              <div style={{ textAlign: 'center', fontSize: '10px', marginTop: '20px', color: '#333', lineHeight: '1.4' }}>
+                <p style={{ margin: 0 }}>Terima Kasih Atas Kunjungan Anda</p>
+                <p style={{ margin: '4px 0 0 0' }}>{activeOutlet?.tagline || 'GENTLEMAN UP YOUR HAIR STYLE!'}</p>
+                <p style={{ margin: '4px 0 0 0' }}>Powered by Luddev v.1</p>
+              </div>
+            </div>
+            
+          </div>
+
+          {/* Footer Actions */}
+          <div className="no-print" style={{ 
+            padding: '24px', 
+            borderTop: '1px solid rgba(255,255,255,0.05)', 
+            display: 'flex', 
+            justifyContent: 'center',
+            gap: '16px',
+            backgroundColor: '#04100a'
+          }}>
+            <button 
+              onClick={handleWhatsAppReceipt}
+              style={{ 
+                padding: '12px 24px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                backgroundColor: '#071a11', 
+                color: '#fff', 
+                border: '1px solid #333',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#113322'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#071a11'}
+            >
+              <MessageCircle size={18} /> WA Struk
+            </button>
+            <button 
+              onClick={handlePrintReceipt}
+              style={{ 
+                padding: '12px 24px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                backgroundColor: 'var(--color-gold)', 
+                color: '#000', 
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+              onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              <Printer size={18} /> Cetak Struk
+            </button>
+          </div>
+        </div>
+      )}
+
+
 
     </div>
   );

@@ -21,9 +21,13 @@ export default function Dashboard() {
   const todayCount = todayTransactions.length;
   const todayCommission = todayTransactions.reduce((sum, t) => {
     return sum + (t.tip || 0) + t.items.reduce((itemSum, item) => {
-      // Assuming commision is a percentage, e.g. 20%
-      const commRate = item.commissionRate || 0;
-      return itemSum + (item.price * item.qty * (commRate / 100));
+      let comm = 0;
+      if (item.commissionType === 'nominal') {
+        comm = item.commissionValue || 0;
+      } else {
+        comm = (item.price * item.qty) * ((item.commissionValue || 0) / 100);
+      }
+      return itemSum + comm;
     }, 0);
   }, 0);
 
@@ -54,19 +58,44 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // SVG Chart Data Points (X: scaled, Y: scaled based on reference mockup curve)
-  const chartPoints = [
-    { label: '09:00', x: 35, y: 31.5 },
-    { label: '10:00', x: 105, y: 97.4 },
-    { label: '11:00', x: 175, y: 136.9 },
-    { label: '12:00', x: 245, y: 102.3 },
-    { label: '13:00', x: 315, y: 130.3 },
-    { label: '14:00', x: 385, y: 94.1 },
-    { label: '15:00', x: 455, y: 64.4 },
-    { label: '16:00', x: 525, y: 119.6 },
-    { label: '17:00', x: 595, y: 119.6 },
-    { label: '18:00', x: 665, y: 113.9 }
-  ];
+  // Generate dynamic chart points based on today's transactions
+  const generateChartPoints = () => {
+    // Define the hours we want to track (09:00 to 18:00)
+    const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+    const hourData = hours.map(h => ({ hour: h, total: 0 }));
+
+    // Aggregate transactions by hour
+    todayTransactions.forEach(t => {
+      const date = new Date(t.date);
+      const h = date.getHours();
+      const bucket = hourData.find(d => d.hour === h);
+      if (bucket) {
+        bucket.total += t.total;
+      } else if (h < 9) {
+        hourData[0].total += t.total;
+      } else if (h > 18) {
+        hourData[hourData.length - 1].total += t.total;
+      }
+    });
+
+    // Find max value to scale Y axis (at least 1 to avoid division by zero)
+    const maxTotal = Math.max(...hourData.map(d => d.total), 1); 
+    
+    // Y range: top is 30, bottom is 165 (height 135) to leave some padding above grid line 170
+    return hourData.map((d, i) => {
+      const normalized = d.total / maxTotal;
+      // y = 165 - (normalized * 135)
+      // If there are no transactions at all, it stays at 165
+      const y = 165 - (normalized * 135);
+      return {
+        label: `${String(d.hour).padStart(2, '0')}:00`,
+        x: 35 + (i * 70),
+        y: d.total === 0 && maxTotal === 1 ? 165 : y
+      };
+    });
+  };
+
+  const chartPoints = generateChartPoints();
 
   // Build SVG Path
   const linePath = chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');

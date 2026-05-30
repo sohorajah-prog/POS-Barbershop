@@ -1,21 +1,13 @@
 import { useState } from 'react';
-import { MOCK_SERVICES, MOCK_BARBERS } from '../store/mockData';
+import toast from 'react-hot-toast';
+import { useAppStore } from '../store/useAppStore';
 import { Clock, Plus, Play, CheckCircle, X } from 'lucide-react';
 
-interface QueueItem {
-  id: string;
-  name: string;
-  service: any;
-  kapster: any;
-  status: 'waiting' | 'serving' | 'done';
-  time: string;
-}
-
 export default function Queue() {
-  const [queue, setQueue] = useState<QueueItem[]>([
-    { id: 'q1', name: 'Bapak Budi', service: MOCK_SERVICES[0], kapster: MOCK_BARBERS[0], status: 'waiting', time: '10:00' },
-    { id: 'q2', name: 'Mas Anton', service: MOCK_SERVICES[1], kapster: MOCK_BARBERS[1], status: 'serving', time: '09:45' },
-  ]);
+  const kapsters = useAppStore(state => state.kapsters);
+  const queue = useAppStore(state => state.walkinQueue);
+  const setQueue = useAppStore(state => state.setWalkinQueue);
+  const services = useAppStore(state => state.services);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -24,10 +16,10 @@ export default function Queue() {
 
   const handleAddQueue = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !selectedService || !selectedKapster) return alert('Lengkapi semua data!');
+    if (!customerName || !selectedService || !selectedKapster) return toast.error('Lengkapi semua data!');
 
-    const service = MOCK_SERVICES.find(s => s.id === selectedService);
-    const kapster = MOCK_BARBERS.find(k => k.id === selectedKapster);
+    const service = services.find(s => s.id === selectedService);
+    const kapster = kapsters.find(k => k.id === selectedKapster);
     
     if (!service || !kapster) return;
 
@@ -217,12 +209,14 @@ export default function Queue() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Layanan</label>
                 <select 
-                  value={selectedService}
-                  onChange={e => setSelectedService(e.target.value)}
-                  required
+                  value={selectedService} 
+                  onChange={(e) => setSelectedService(e.target.value)}
+                  style={{ width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--color-text-primary)', padding: '10px 14px', borderRadius: '8px' }}
                 >
-                  <option value="" disabled>Pilih Layanan</option>
-                  {MOCK_SERVICES.map(s => <option key={s.id} value={s.id} style={{backgroundColor: 'var(--color-card)'}}>{s.name} - Rp {s.price.toLocaleString('id-ID')}</option>)}
+                  <option value="" disabled style={{ backgroundColor: 'var(--color-card)' }}>Pilih Layanan</option>
+                  {services.map(s => (
+                    <option key={s.id} value={s.id} style={{ backgroundColor: 'var(--color-card)' }}>{s.name} - Rp {s.price.toLocaleString('id-ID')}</option>
+                  ))}
                 </select>
               </div>
 
@@ -234,7 +228,7 @@ export default function Queue() {
                   required
                 >
                   <option value="" disabled>Pilih Kapster</option>
-                  {MOCK_BARBERS.filter(b => b.status === 'active').map(b => <option key={b.id} value={b.id} style={{backgroundColor: 'var(--color-card)'}}>{b.name}</option>)}
+                  {kapsters.filter(b => b.status === 'active').map(b => <option key={b.id} value={b.id} style={{backgroundColor: 'var(--color-card)'}}>{b.name}</option>)}
                 </select>
               </div>
 

@@ -1,21 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
-  /* Color Palette - Modern Premium Dark Lounge (Matched to C:/Users/Yoga Slim 7 ProX/Downloads/POS-Barbershop/style.css) */
-  --color-canvas: #0e0e10;
-  --color-sidebar: #09090b;
-  --color-card: rgba(22, 22, 26, 0.75);
-  --color-card-border: rgba(207, 168, 83, 0.12);
+  /* Color Palette - Modern Premium Dark Lounge (Gold & Dark Green) */
+  --color-canvas: #071a11;
+  --color-sidebar: #04100a;
+  --color-card: rgba(11, 33, 22, 0.75);
+  --color-card-border: rgba(212, 175, 55, 0.15);
   
-  --color-gold: #cfa853;
-  --color-gold-hover: #e5be6b;
-  --color-gold-translucent: rgba(207, 168, 83, 0.08);
-  --color-gold-border: rgba(207, 168, 83, 0.25);
+  --color-gold: #d4af37;
+  --color-gold-hover: #f1c953;
+  --color-gold-translucent: rgba(212, 175, 55, 0.08);
+  --color-gold-border: rgba(212, 175, 55, 0.25);
   
   --color-white: #ffffff;
-  --color-text-primary: #f4f4f7;
-  --color-text-secondary: #a0a0ab;
-  --color-text-muted: #6e6e77;
+  --color-text-primary: #f0fdf4; /* Slightly tinted white */
+  --color-text-secondary: #a7d0ba; /* Muted green tint */
+  --color-text-muted: #618772;
   
   /* Status Colors */
   --color-success: #10b981;
@@ -107,6 +107,89 @@ input:disabled, select:disabled, textarea:disabled {
   background-color: rgba(255, 255, 255, 0.01);
 }
 
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 60px;
+  }
+  .sidebar span {
+    display: none;
+  }
+}
+
+/* Print Styles for Thermal Receipt */
+@media print {
+  @page {
+    margin: 0;
+    size: 80mm auto; /* Thermal printer: 80mm width, auto height */
+  }
+
+  /* Hide absolutely everything first */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    width: 80mm !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body > * {
+    display: none !important;
+  }
+
+  /* But show the receipt modal overlay so the paper inside renders */
+  .receipt-modal-overlay {
+    display: block !important;
+    position: static !important;
+    background: white !important;
+    backdrop-filter: none !important;
+    width: 80mm !important;
+    height: auto !important;
+    overflow: visible !important;
+    z-index: auto !important;
+  }
+
+  /* Hide the modal header, footer buttons, and wrapper styling */
+  .no-print {
+    display: none !important;
+  }
+
+  .no-print-wrapper {
+    display: block !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    flex: none !important;
+    height: auto !important;
+  }
+
+  /* The receipt paper itself */
+  #receipt-paper {
+    display: block !important;
+    position: static !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 8px 10px !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: black !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 11px !important;
+    page-break-after: avoid;
+  }
+
+  #receipt-paper * {
+    color: black !important;
+    background: transparent !important;
+  }
+
+  #receipt-paper h2, #receipt-paper h3 {
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;
@@ -129,7 +212,7 @@ input:disabled, select:disabled, textarea:disabled {
 /* Utilities / Core Components */
 .btn-primary {
   background: linear-gradient(135deg, var(--color-gold) 0%, #b48d38 100%);
-  color: #0d0d0f;
+  color: #04100a;
   font-weight: 700;
   padding: var(--spacing-sm) var(--spacing-lg);
   border-radius: var(--radius-md);

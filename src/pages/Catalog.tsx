@@ -1,43 +1,41 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { MOCK_SERVICES, MOCK_PRODUCTS, MOCK_BARBERS } from '../store/mockData';
-import { Sparkles, Scissors, ShoppingBag, Users, Edit, Trash2, X } from 'lucide-react';
+import { Sparkles, Scissors, ShoppingBag, Edit, Trash2, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Catalog() {
-  const { user } = useAppStore();
+  const { user, services, addService, updateService, removeService, products, addProduct, updateProduct, removeProduct } = useAppStore();
   const isAdmin = user?.role === 'admin';
 
-  const [activeTab, setActiveTab] = useState<'services' | 'products' | 'barbers'>('services');
-
-  // Local CRUD States initialized from mock database
-  const [services, setServices] = useState(MOCK_SERVICES);
-  const [products, setProducts] = useState(MOCK_PRODUCTS);
-  const [barbers, setBarbers] = useState(MOCK_BARBERS);
+  const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
 
   // Modal Dialog States
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<'add' | 'edit'>('add');
   const [editItem, setEditItem] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form Field States
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [commission, setCommission] = useState(0);
+  const [commissionType, setCommissionType] = useState<'percentage'|'nominal'>('percentage');
+  const [commissionValue, setCommissionValue] = useState(0);
   const [stock, setStock] = useState(0);
-  const [status, setStatus] = useState('active');
 
   // Trigger Deletion
-  const handleDelete = (id: string, type: 'service' | 'product' | 'barber') => {
+  const handleDelete = async (id: string, type: 'service' | 'product') => {
     if (!confirm('Apakah Anda yakin ingin menghapus item ini dari katalog?')) return;
-
-    if (type === 'service') {
-      setServices(services.filter(s => s.id !== id));
-    } else if (type === 'product') {
-      setProducts(products.filter(p => p.id !== id));
-    } else if (type === 'barber') {
-      setBarbers(barbers.filter(b => b.id !== id));
+    try {
+      if (type === 'service') {
+        await removeService(id);
+      } else if (type === 'product') {
+        await removeProduct(id);
+      }
+      toast.success('Berhasil dihapus');
+    } catch (e: any) {
+      toast.error('Gagal menghapus: ' + e.message);
     }
   };
 
@@ -50,13 +48,12 @@ export default function Catalog() {
       setCategory('Haircut');
       setPrice(75000);
       setDuration(35);
-      setCommission(0.3);
+      setCommissionType('percentage');
+      setCommissionValue(30);
     } else if (activeTab === 'products') {
       setCategory('Pomade');
       setPrice(120000);
       setStock(10);
-    } else {
-      setStatus('active');
     }
     setShowModal(true);
   };
@@ -69,72 +66,47 @@ export default function Catalog() {
     setCategory(item.category || '');
     setPrice(item.price || 0);
     setDuration(item.duration || 0);
-    setCommission(item.commissionRate || 0);
+    setCommissionType(item.commissionType || 'percentage');
+    setCommissionValue(item.commissionValue || 0);
     setStock(item.stock || 0);
-    setStatus(item.status || 'active');
     setShowModal(true);
   };
 
   // Save/Submit Form Changes
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (modalType === 'add') {
-      const newId = `${activeTab === 'services' ? 'srv' : activeTab === 'products' ? 'prd' : 'kap'}-${Date.now()}`;
-      
-      if (activeTab === 'services') {
-        setServices([...services, {
-          id: newId,
-          name,
-          category,
-          duration,
-          price,
-          commissionRate: commission
-        }]);
-      } else if (activeTab === 'products') {
-        setProducts([...products, {
-          id: newId,
-          name,
-          category,
-          price,
-          stock
-        }]);
-      } else if (activeTab === 'barbers') {
-        setBarbers([...barbers, {
-          id: newId,
-          name,
-          status
-        }]);
+    setIsSaving(true);
+    try {
+      if (modalType === 'add') {
+        const newId = `${activeTab === 'services' ? 'srv' : 'prd'}-${Date.now()}`;
+        
+        if (activeTab === 'services') {
+          await addService({
+            id: newId, name, category, duration, price, commissionType, commissionValue
+          });
+        } else if (activeTab === 'products') {
+          await addProduct({
+            id: newId, name, category, price, stock
+          });
+        }
+      } else {
+        // Edit mode
+        if (activeTab === 'services') {
+          await updateService(editItem.id, {
+            name, category, duration, price, commissionType, commissionValue
+          });
+        } else if (activeTab === 'products') {
+          await updateProduct(editItem.id, {
+            name, category, price, stock
+          });
+        }
       }
-    } else {
-      // Edit mode
-      if (activeTab === 'services') {
-        setServices(services.map(s => s.id === editItem.id ? {
-          ...s,
-          name,
-          category,
-          duration,
-          price,
-          commissionRate: commission
-        } : s));
-      } else if (activeTab === 'products') {
-        setProducts(products.map(p => p.id === editItem.id ? {
-          ...p,
-          name,
-          category,
-          price,
-          stock
-        } : p));
-      } else if (activeTab === 'barbers') {
-        setBarbers(barbers.map(b => b.id === editItem.id ? {
-          ...b,
-          name,
-          status
-        } : b));
-      }
+      toast.success('Berhasil disimpan');
+      setShowModal(false);
+    } catch (e: any) {
+      toast.error('Gagal menyimpan: ' + e.message);
     }
-
-    setShowModal(false);
+    setIsSaving(false);
   };
 
   return (
@@ -153,7 +125,7 @@ export default function Catalog() {
         {isAdmin && (
           <button onClick={handleOpenAddModal} className="btn-primary">
             <Sparkles size={16} />
-            + Tambah {activeTab === 'services' ? 'Layanan' : activeTab === 'products' ? 'Produk' : 'Kapster'}
+            + Tambah {activeTab === 'services' ? 'Layanan' : 'Produk'}
           </button>
         )}
       </div>
@@ -202,25 +174,6 @@ export default function Catalog() {
           <ShoppingBag size={16} />
           Produk Ritel
         </button>
-
-        <button 
-          onClick={() => setActiveTab('barbers')}
-          style={{ 
-            background: 'transparent', 
-            fontWeight: 600, 
-            fontSize: '0.95rem',
-            color: activeTab === 'barbers' ? 'var(--color-gold)' : 'var(--color-text-secondary)', 
-            borderBottom: activeTab === 'barbers' ? '2px solid var(--color-gold)' : '2px solid transparent', 
-            padding: '8px 4px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <Users size={16} />
-          Daftar Kapster
-        </button>
       </div>
 
       {/* Catalog Table Container */}
@@ -247,14 +200,6 @@ export default function Catalog() {
                   {isAdmin && <th style={{ padding: '16px 20px', width: '150px' }}>Aksi</th>}
                 </>
               )}
-              {activeTab === 'barbers' && (
-                <>
-                  <th style={{ padding: '16px 20px' }}>Nama Kapster</th>
-                  <th style={{ padding: '16px 20px' }}>ID Kapster</th>
-                  <th style={{ padding: '16px 20px' }}>Status Operasional</th>
-                  {isAdmin && <th style={{ padding: '16px 20px', width: '150px' }}>Aksi</th>}
-                </>
-              )}
             </tr>
           </thead>
           <tbody>
@@ -264,7 +209,12 @@ export default function Catalog() {
                 <td style={{ padding: '16px 20px', color: 'var(--color-text-secondary)' }}>{item.category}</td>
                 <td style={{ padding: '16px 20px', color: 'var(--color-text-secondary)' }}>{item.duration} mnt</td>
                 <td style={{ padding: '16px 20px', fontWeight: 600, color: 'var(--color-gold)' }}>Rp {item.price.toLocaleString('id-ID')}</td>
-                <td style={{ padding: '16px 20px', color: 'var(--color-success)', fontWeight: 500 }}>{item.commissionRate * 100}%</td>
+                <td style={{ padding: '16px 20px', color: 'var(--color-success)', fontWeight: 500 }}>
+                  {item.commissionType === 'nominal' 
+                    ? `Rp ${item.commissionValue.toLocaleString('id-ID')}` 
+                    : `${item.commissionValue}%`
+                  }
+                </td>
                 {isAdmin && (
                   <td style={{ padding: '16px 20px' }}>
                     <div style={{ display: 'flex', gap: '12px' }}>
@@ -314,43 +264,6 @@ export default function Catalog() {
                       </button>
                       <button 
                         onClick={() => handleDelete(item.id, 'product')}
-                        style={{ color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 600 }}
-                      >
-                        <Trash2 size={14} /> Hapus
-                      </button>
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
-            {activeTab === 'barbers' && barbers.map(item => (
-              <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.01)' }}>
-                <td style={{ padding: '16px 20px', fontWeight: 600, color: 'var(--color-text-primary)' }}>{item.name}</td>
-                <td style={{ padding: '16px 20px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>{item.id}</td>
-                <td style={{ padding: '16px 20px' }}>
-                  <span style={{ 
-                    padding: '4px 10px', 
-                    backgroundColor: item.status === 'active' ? 'var(--color-success-bg)' : 'rgba(255, 255, 255, 0.05)', 
-                    color: item.status === 'active' ? 'var(--color-success)' : 'var(--color-text-secondary)', 
-                    border: item.status === 'active' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(255,255,255,0.05)',
-                    borderRadius: '6px', 
-                    fontSize: '0.75rem',
-                    fontWeight: 700
-                  }}>
-                    {item.status.toUpperCase()}
-                  </span>
-                </td>
-                {isAdmin && (
-                  <td style={{ padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <button 
-                        onClick={() => handleOpenEditModal(item)}
-                        style={{ color: 'var(--color-gold)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 600 }}
-                      >
-                        <Edit size={14} /> Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(item.id, 'barber')}
                         style={{ color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 600 }}
                       >
                         <Trash2 size={14} /> Hapus
@@ -462,19 +375,29 @@ export default function Catalog() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Komisi Kapster (%)</label>
-                    <select 
-                      value={commission} 
-                      onChange={(e) => setCommission(Number(e.target.value))}
-                      style={{ width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--color-text-primary)', padding: '10px 14px', borderRadius: '8px' }}
-                    >
-                      <option value={0.1} style={{ backgroundColor: 'var(--color-card)' }}>10%</option>
-                      <option value={0.2} style={{ backgroundColor: 'var(--color-card)' }}>20%</option>
-                      <option value={0.3} style={{ backgroundColor: 'var(--color-card)' }}>30%</option>
-                      <option value={0.4} style={{ backgroundColor: 'var(--color-card)' }}>40%</option>
-                      <option value={0.5} style={{ backgroundColor: 'var(--color-card)' }}>50%</option>
-                    </select>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Jenis Komisi</label>
+                      <select 
+                        value={commissionType} 
+                        onChange={(e) => setCommissionType(e.target.value as any)}
+                        style={{ width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--color-text-primary)', padding: '10px 14px', borderRadius: '8px' }}
+                      >
+                        <option value="percentage" style={{ backgroundColor: 'var(--color-card)' }}>Persentase (%)</option>
+                        <option value="nominal" style={{ backgroundColor: 'var(--color-card)' }}>Nominal (Rp)</option>
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Nilai Komisi</label>
+                      <input 
+                        type="number" 
+                        value={commissionValue} 
+                        onChange={(e) => setCommissionValue(Number(e.target.value))}
+                        style={{ width: '100%' }}
+                        required 
+                        min={0}
+                      />
+                    </div>
                   </div>
                 </>
               )}
@@ -519,21 +442,6 @@ export default function Catalog() {
                 </>
               )}
 
-              {/* Barber specific fields */}
-              {activeTab === 'barbers' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Status Operasional</label>
-                  <select 
-                    value={status} 
-                    onChange={(e) => setStatus(e.target.value)}
-                    style={{ width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--color-text-primary)', padding: '10px 14px', borderRadius: '8px' }}
-                  >
-                    <option value="active" style={{ backgroundColor: 'var(--color-card)' }}>ACTIVE (Aktif Bekerja)</option>
-                    <option value="inactive" style={{ backgroundColor: 'var(--color-card)' }}>INACTIVE (Off / Cuti)</option>
-                  </select>
-                </div>
-              )}
-
               {/* Actions */}
               <div style={{ display: 'flex', gap: '12px', marginTop: '14px', justifyContent: 'flex-end' }}>
                 <button 
@@ -547,9 +455,10 @@ export default function Catalog() {
                 <button 
                   type="submit" 
                   className="btn-primary"
+                  disabled={isSaving}
                   style={{ padding: '10px 18px', fontSize: '0.9rem' }}
                 >
-                  Simpan Perubahan
+                  {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
               </div>
             </form>

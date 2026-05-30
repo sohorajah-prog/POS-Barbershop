@@ -1,32 +1,50 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useAppStore';
 import { Clock, ShieldAlert, Sparkles, LogOut } from 'lucide-react';
 
 export default function Shift() {
-  const { activeShift, user, activeOutlet, openShift, closeShift } = useAppStore();
+  const { activeShift, user, activeOutlet, openShift, closeShift, transactions } = useAppStore();
   const [startCash, setStartCash] = useState<number>(0);
   const [endCash, setEndCash] = useState<number>(0);
+  const [isOpening, setIsOpening] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
-  // Mock calculated expected cash
-  const expectedCash = activeShift ? activeShift.startCash + 1500000 : 0; 
+  // Calculate expected cash based on transactions during this shift
+  const totalRevenue = transactions.reduce((sum, t) => sum + t.total, 0);
+  const expectedCash = activeShift ? activeShift.startCash + totalRevenue : 0; 
 
-  const handleOpenShift = (e: React.FormEvent) => {
+  const handleOpenShift = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !activeOutlet) return alert("Anda harus login dan berada di outlet");
+    if (!user || !activeOutlet) return toast.error("Anda harus login dan berada di outlet");
     
-    openShift({
-      id: `shift-${Date.now()}`,
-      cashierId: user.id,
-      outletId: activeOutlet.id,
-      startTime: new Date().toISOString(),
-      startCash,
-      status: 'open'
-    });
+    setIsOpening(true);
+    try {
+      await openShift({
+        id: '',
+        cashierId: user.id,
+        outletId: activeOutlet.id,
+        startTime: new Date().toISOString(),
+        startCash,
+        status: 'open'
+      });
+      toast.success('Shift berhasil dibuka!');
+    } catch (e: any) {
+      toast.error('Gagal membuka shift: ' + e.message);
+    }
+    setIsOpening(false);
   };
 
-  const handleCloseShift = (e: React.FormEvent) => {
+  const handleCloseShift = async (e: React.FormEvent) => {
     e.preventDefault();
-    closeShift(endCash, expectedCash);
+    setIsClosing(true);
+    try {
+      await closeShift(Number(endCash), Number(expectedCash));
+      toast.success('Shift berhasil ditutup!');
+    } catch (e: any) {
+      toast.error('Gagal menutup shift: ' + e.message);
+    }
+    setIsClosing(false);
   };
 
   return (
@@ -135,6 +153,7 @@ export default function Shift() {
               <button 
                 type="submit" 
                 className="btn-primary" 
+                disabled={isClosing}
                 style={{ 
                   backgroundColor: 'var(--color-danger)', 
                   color: 'white', 
@@ -143,7 +162,7 @@ export default function Shift() {
                 }}
               >
                 <LogOut size={16} />
-                Tutup Shift & Rekonsiliasi
+                {isClosing ? 'Memproses...' : 'Tutup Shift & Rekonsiliasi'}
               </button>
             </form>
           </div>
@@ -194,9 +213,9 @@ export default function Shift() {
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px' }}>
+            <button type="submit" className="btn-primary" disabled={isOpening} style={{ width: '100%', marginTop: '10px' }}>
               <Sparkles size={16} />
-              Buka Shift Sekarang
+              {isOpening ? 'Membuka...' : 'Buka Shift Sekarang'}
             </button>
           </form>
         )}

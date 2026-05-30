@@ -1,14 +1,101 @@
+import { useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { BarChart2, Calendar, Download, TrendingUp } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
-import { MOCK_BARBERS } from '../store/mockData';
-// Halaman Laporan Penjualan
 
 export default function Reports() {
-  const { transactions } = useAppStore();
+  const { transactions, kapsters } = useAppStore();
+  
+  // Format YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    new Date().toISOString().substring(0, 7)
+  );
 
-  const totalRevenue = transactions.reduce((sum, t) => sum + t.total, 0);
-  const totalCount = transactions.length;
+  // Get list of available months from transactions
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    months.add(new Date().toISOString().substring(0, 7)); // Always include current month
+    transactions.forEach(t => {
+      months.add(t.date.substring(0, 7));
+    });
+    return Array.from(months).sort().reverse(); // Newest first
+  }, [transactions]);
+
+  // Filter transactions
+  const filteredTransactions = useMemo(() => {
+    if (selectedMonth === 'all') return transactions;
+    return transactions.filter(t => t.date.startsWith(selectedMonth));
+  }, [transactions, selectedMonth]);
+
+  const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
+  const totalCount = filteredTransactions.length;
   const avgValue = totalCount > 0 ? totalRevenue / totalCount : 0;
+
+  const handleDownloadCSV = () => {
+    if (filteredTransactions.length === 0) {
+      toast.error('Tidak ada data untuk diunduh pada bulan ini.');
+      return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    // Header
+    csvContent += "ID Transaksi,Tanggal,Pelanggan,Metode Pembayaran,Layanan/Produk,Kapster,Harga,Qty,Total Harga,Komisi Kapster,Tip Kapster,Pajak,Total Bayar\n";
+
+    filteredTransactions.forEach(trx => {
+      const dateStr = new Date(trx.date).toLocaleString('id-ID');
+      
+      trx.items.forEach((item, index) => {
+        let kapsterName = '-';
+        let commission = 0;
+        
+        if (item.kapsterId) {
+          const k = kapsters.find(k => k.id === item.kapsterId);
+          kapsterName = k ? k.name : item.kapsterId;
+          
+          if (item.commissionType === 'nominal') {
+            commission = item.commissionValue || 0;
+          } else {
+            // Percentage
+            commission = (item.price * item.qty) * ((item.commissionValue || 0) / 100);
+          }
+        }
+
+        // Only first item row gets the total, tax, tip info to avoid duplication
+        const isFirst = index === 0;
+        const total = isFirst ? trx.total : 0;
+        const tax = isFirst ? trx.tax : 0;
+        const tip = isFirst ? trx.tip : 0;
+
+        const row = [
+          trx.id,
+          dateStr,
+          trx.customerName || 'Walk-in',
+          trx.method,
+          item.name,
+          kapsterName,
+          item.price,
+          item.qty,
+          item.price * item.qty,
+          commission,
+          tip,
+          tax,
+          total
+        ];
+
+        // Wrap strings in quotes to handle commas
+        const csvRow = row.map(cell => typeof cell === 'string' ? `"${cell}"` : cell).join(',');
+        csvContent += csvRow + "\n";
+      });
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Laporan_Penjualan_${selectedMonth}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%' }}>
@@ -23,12 +110,22 @@ export default function Reports() {
             Pantau ringkasan pendapatan, performa kapster, dan histori transaksi lengkap.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="btn-outline" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
-            <Calendar size={16} />
-            Bulan Ini
-          </button>
-          <button className="btn-primary" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-card-border)', borderRadius: '8px', padding: '0 12px' }}>
+            <Calendar size={16} color="var(--color-text-secondary)" />
+            <select 
+              value={selectedMonth} 
+              onChange={e => setSelectedMonth(e.target.value)}
+              style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--color-text-primary)', padding: '8px', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="all" style={{background: '#071a11'}}>Semua Waktu</option>
+              {availableMonths.map(m => {
+                const date = new Date(`${m}-01`);
+                return <option key={m} value={m} style={{background: '#071a11'}}>{date.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}</option>;
+              })}
+            </select>
+          </div>
+          <button onClick={handleDownloadCSV} className="btn-primary" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
             <Download size={16} />
             Unduh Laporan
           </button>
@@ -80,15 +177,15 @@ export default function Reports() {
             </tr>
           </thead>
           <tbody>
-            {transactions.length === 0 ? (
+            {filteredTransactions.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-secondary)' }}>Belum ada histori transaksi.</td>
               </tr>
             ) : (
-              [...transactions].reverse().map(trx => {
+              [...filteredTransactions].reverse().map(trx => {
                 // Determine kapster name from first service item
                 const serviceItem = trx.items.find(i => i.type === 'service');
-                const kapster = MOCK_BARBERS.find(b => b.id === serviceItem?.kapsterId);
+                const kapster = kapsters.find(b => b.id === serviceItem?.kapsterId);
                 const kapsterName = kapster ? kapster.name : '-';
                 
                 return (

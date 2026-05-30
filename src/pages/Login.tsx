@@ -1,24 +1,93 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { Scissors } from 'lucide-react';
+import { insforge } from '../lib/insforge';
 import { useAppStore } from '../store/useAppStore';
 
 export default function Login() {
   const navigate = useNavigate();
-  const login = useAppStore(state => state.login);
-  const [role, setRole] = useState<'admin' | 'cashier'>('cashier');
+  const { login } = useAppStore();
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) return toast.error('Silakan masukkan email Anda terlebih dahulu.');
     
-    // Mock user login
-    login({
-      id: 'u1',
-      name: role === 'admin' ? 'Budi (Admin)' : 'Eko Prasetyo',
-      role: role,
-      outletId: 'out-1'
-    }, 
-    { id: 'out-1', name: 'Barbertopia Pekayon', address: 'Jl. Raya Pekayon No. 45, Bekasi', taxRate: 10 });
+    setIsLoading(true);
+    const { error } = await insforge.auth.sendResetPasswordEmail({ email });
+    setIsLoading(false);
     
+    if (error) {
+      toast.error('Gagal mengirim link reset: ' + error.message);
+    } else {
+      toast.success('Link reset password telah dikirim ke email Anda. Silakan cek kotak masuk/spam.');
+      setIsResetMode(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return toast.error('Lengkapi email dan password!');
+    
+    setIsLoading(true);
+    
+    // Try sign in
+    const { error } = await insforge.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      // Bootstrap admin account automatically if login fails
+      const { data: signUpData, error: signUpError } = await insforge.auth.signUp({
+        email,
+        password
+      });
+      
+      if (signUpError) {
+        setIsLoading(false);
+        return toast.error(`Login gagal: ${error.message}. Daftar juga gagal: ${signUpError.message}`);
+      } else {
+        
+        // Also insert into profiles for this new admin
+        if (signUpData?.user) {
+          const { data: outlets } = await insforge.database.from('outlets').select('id').limit(1);
+          if (outlets && outlets.length > 0) {
+            await insforge.database.from('profiles').insert([
+              { id: signUpData.user.id, name: 'Admin Barbershop', role: 'admin', outlet_id: outlets[0].id }
+            ]);
+          }
+        }
+
+        toast.success('Akun Admin berhasil dibuat otomatis. Silakan klik Login sekali lagi.');
+        setIsLoading(false);
+        return;
+      }
+    }
+    
+    // Fetch profile and update local state so ProtectedRoute doesn't kick us out
+    const { data: userData } = await insforge.auth.getCurrentUser();
+    if (userData?.user) {
+      const { data: profile } = await insforge.database.from('profiles').select('*').eq('id', userData.user.id).single();
+      if (profile) {
+        login({ id: userData.user.id, name: profile.name, role: profile.role, outletId: profile.outlet_id });
+      } else {
+        // Profile is missing (maybe because RLS blocked it during sign-up), create it now!
+        const { data: outlets } = await insforge.database.from('outlets').select('id').limit(1);
+        if (outlets && outlets.length > 0) {
+          await insforge.database.from('profiles').insert([
+            { id: userData.user.id, name: 'Admin Barbershop', role: 'admin', outlet_id: outlets[0].id }
+          ]);
+          login({ id: userData.user.id, name: 'Admin Barbershop', role: 'admin', outletId: outlets[0].id });
+        }
+      }
+    }
+    
+    setIsLoading(false);
     navigate('/');
   };
 
@@ -49,62 +118,129 @@ export default function Login() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#050506',
-            fontSize: '1.6rem',
-            fontWeight: '800',
-            fontFamily: 'var(--font-sans)',
+            color: '#04100a',
             boxShadow: '0 4px 12px rgba(207, 162, 67, 0.3)'
           }}>
-            B
+            <Scissors size={28} />
           </div>
           <h1 style={{ color: 'var(--color-white)', fontSize: '1.6rem', fontWeight: 800, margin: '8px 0 0 0', textAlign: 'center', letterSpacing: '-0.01em' }}>
-            Barbertopia Pekayon
+            Barbershop
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', margin: 0, textAlign: 'center' }}>
             Sistem Kasir & POS Barbershop Premium
           </p>
+          <div style={{ textAlign: 'center', marginTop: '4px' }}>
+            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>powered by </span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-gold)', opacity: 0.8 }}>Luddev v.1</span>
+          </div>
         </div>
 
         {/* Form Select simulation */}
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-              Pilih Peran Akun (Simulasi)
-            </label>
-            <select 
-              value={role} 
-              onChange={(e) => setRole(e.target.value as any)}
-              style={{ 
-                width: '100%',
-                padding: '10px 14px', 
-                borderRadius: '8px', 
-                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                color: 'var(--color-text-primary)',
-                fontSize: '0.95rem',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="cashier" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-text-primary)' }}>Eko Prasetyo (Kasir)</option>
-              <option value="admin" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-text-primary)' }}>Budi (Admin / Owner)</option>
-            </select>
-          </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ 
+                fontSize: '0.85rem', 
+                fontWeight: '600', 
+                color: 'var(--color-text-secondary)'
+              }}>
+                Email
+              </label>
+              <input 
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Masukkan email"
+                required
+                style={{
+                  width: '100%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--color-card-border)',
+                  color: 'var(--color-text-primary)',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  fontSize: '0.95rem'
+                }}
+              />
+            </div>
 
-          <button 
-            type="submit" 
-            className="btn-primary" 
-            style={{ 
-              width: '100%', 
-              padding: '12px', 
-              fontSize: '1rem', 
-              fontWeight: 700,
-              boxShadow: '0 4px 14px rgba(207, 162, 67, 0.15)',
-              marginTop: '8px'
-            }}
-          >
-            Masuk ke Aplikasi
-          </button>
+          {isResetMode ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <button 
+                type="button" 
+                onClick={handleForgotPassword}
+                className="btn-primary" 
+                style={{ width: '100%', padding: '14px', marginTop: '8px', fontSize: '1rem' }}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Memproses...' : 'Kirim Link Reset'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsResetMode(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-text-secondary)',
+                  marginTop: '12px',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                Kembali ke Login
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsResetMode(true)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--color-gold)',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    fontWeight: 500
+                  }}
+                >
+                  Lupa Password?
+                </button>
+              </div>
+              <input 
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Masukkan password"
+                style={{ 
+                  width: '100%',
+                  padding: '10px 14px', 
+                  borderRadius: '8px', 
+                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '0.95rem',
+                  outline: 'none'
+                }}
+              />
+            </div>
+          )}
+
+          {!isResetMode && (
+            <button 
+              type="submit" 
+              className="btn-primary" 
+              style={{ width: '100%', padding: '14px', marginTop: '8px', fontSize: '1rem' }}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Memproses...' : 'Masuk / Login'}
+            </button>
+          )}
         </form>
       </div>
     </div>

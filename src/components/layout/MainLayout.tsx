@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { 
@@ -9,7 +10,7 @@ import {
   ClipboardList, 
   BarChart2,
   Settings as SettingsIcon,
-  LogOut 
+  LogOut
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -18,7 +19,7 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const { user, logout } = useAppStore();
+  const { user, logout, activeOutlet } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -36,7 +37,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     { label: 'Katalog & Layanan', icon: <Scissors size={18} />, path: '/catalog' },
     { label: 'Manajemen Shift', icon: <ClipboardList size={18} />, path: '/shift' },
     { label: 'Laporan Penjualan', icon: <BarChart2 size={18} />, path: '/reports' },
-    { label: 'Pengaturan', icon: <SettingsIcon size={18} />, path: '/settings' },
+    ...(user?.role === 'admin' ? [{ label: 'Pengaturan', icon: <SettingsIcon size={18} />, path: '/settings' }] : []),
   ];
 
   // Ambil huruf pertama user untuk avatar
@@ -64,41 +65,56 @@ export default function MainLayout({ children }: MainLayoutProps) {
           padding: '24px 20px',
           borderBottom: '1px solid rgba(255,255,255,0.02)'
         }}>
-          <div style={{
-            width: '36px',
-            height: '36px',
-            backgroundColor: 'var(--color-gold)',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#050506',
-            fontSize: '1.25rem',
-            fontWeight: '800',
-            fontFamily: 'var(--font-sans)',
-            boxShadow: '0 2px 8px rgba(207, 162, 67, 0.3)'
-          }}>
-            B
-          </div>
-          <div>
-            <div style={{ 
-              fontSize: '1.1rem', 
-              fontWeight: '700', 
-              color: 'var(--color-text-primary)', 
-              lineHeight: '1.1',
-              letterSpacing: '-0.01em'
-            }}>
-              Barbertopia
-            </div>
-            <div style={{ 
-              fontSize: '0.9rem', 
-              fontWeight: '700', 
-              color: 'var(--color-text-primary)',
+          {activeOutlet?.logoUrl ? (
+            <img 
+              src={activeOutlet.logoUrl} 
+              alt="Logo" 
+              style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}
+            />
+          ) : (
+            <div style={{
+              width: '36px',
+              height: '36px',
+              backgroundColor: 'var(--color-gold)',
+              borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              opacity: 0.95
+              justifyContent: 'center',
+              color: '#050506',
+              fontSize: '1.25rem',
+              fontWeight: '800',
+              fontFamily: 'var(--font-sans)',
+              boxShadow: '0 2px 8px rgba(207, 162, 67, 0.3)'
             }}>
-              Pekayon<span style={{ color: 'var(--color-gold)', marginLeft: '1px', fontWeight: '900' }}>.</span>
+              <Scissors size={20} />
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ 
+              fontSize: '1.15rem', 
+              fontWeight: '800', 
+              color: 'var(--color-white)', 
+              lineHeight: '1.2',
+              letterSpacing: '-0.02em',
+              wordBreak: 'break-word',
+              marginBottom: '4px'
+            }} title={activeOutlet?.name || 'Barbertopia'}>
+              {activeOutlet?.name || 'Barbertopia'}
+            </div>
+            <div style={{ 
+              fontSize: '0.7rem', 
+              fontWeight: '500', 
+              fontStyle: 'italic',
+              color: 'var(--color-text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              letterSpacing: '0.02em',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeOutlet?.tagline || 'POS System'}</span>
+              <span style={{ color: 'var(--color-gold)', marginLeft: '2px', fontWeight: '900', flexShrink: 0 }}>.</span>
             </div>
           </div>
         </div>
@@ -211,7 +227,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
             Shift Buka
           </div>
 
-          {/* Kunci POS Button */}
+
+
+          {/* Logout Button */}
           <button 
             onClick={handleLogout}
             style={{ 
@@ -239,7 +257,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             }}
           >
             <LogOut size={16} />
-            Kunci POS
+            Logout
           </button>
         </div>
       </aside>
@@ -257,6 +275,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
           {children}
         </div>
       </main>
+
+
     </div>
   );
 }

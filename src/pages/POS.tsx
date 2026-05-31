@@ -89,13 +89,14 @@ export default function POS() {
     if (existing) {
       setCart(cart.map(c => c.id === item.id && c.kapsterId === selectedKapsterId ? { ...c, qty: c.qty + 1 } : c));
     } else {
+      const kapster = type === 'service' ? kapsters.find(k => k.id === selectedKapsterId) : undefined;
       setCart([...cart, { 
         ...item, 
         qty: 1, 
         type, 
         kapsterId: type === 'service' ? selectedKapsterId : undefined,
-        commissionType: type === 'service' ? (item.commissionType || 'percentage') : undefined,
-        commissionValue: type === 'service' ? (item.commissionValue || 0) : undefined
+        commissionType: kapster?.commissionType || 'percentage',
+        commissionValue: kapster?.commissionValue || 0
       }]);
     }
   };
@@ -105,7 +106,7 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const taxRate = activeOutlet?.taxRate || 10;
+  const taxRate = activeOutlet?.taxRate ?? 10;
   const tax = subtotal * (taxRate / 100);
   const total = subtotal + tax + tipAmount;
 
@@ -945,7 +946,7 @@ export default function POS() {
                   <span>Rp {completedTransaction.subtotal.toLocaleString('id-ID')}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                  <span>Pajak PPN ({activeOutlet?.taxRate || 10}%):</span>
+                  <span>Pajak PPN ({activeOutlet?.taxRate ?? 10}%):</span>
                   <span>Rp {completedTransaction.tax.toLocaleString('id-ID')}</span>
                 </div>
                 {completedTransaction.tip > 0 && (

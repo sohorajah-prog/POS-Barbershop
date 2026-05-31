@@ -222,11 +222,16 @@ export const useAppStore = create<AppState>()(
       const outletId = get().activeOutlet?.id;
       if (!outletId) return;
 
-      const [kapstersRes, servicesRes, productsRes, profilesRes] = await Promise.all([
+      const [kapstersRes, servicesRes, productsRes, profilesRes, shiftsRes, txRes] = await Promise.all([
         insforge.database.from('kapsters').select('*').eq('outlet_id', outletId),
         insforge.database.from('services').select('*').eq('outlet_id', outletId),
         insforge.database.from('products').select('*').eq('outlet_id', outletId),
-        insforge.database.from('profiles').select('*').eq('outlet_id', outletId)
+        insforge.database.from('profiles').select('*').eq('outlet_id', outletId),
+        insforge.database.from('shifts').select('*').eq('outlet_id', outletId).eq('status', 'open').order('start_time', { ascending: false }).limit(1),
+        insforge.database.from('transactions')
+          .select('*, transaction_items(*)')
+          .eq('outlet_id', outletId)
+          .gte('date', new Date(new Date().setHours(0,0,0,0)).toISOString())
       ]);
       
       if (kapstersRes.data) {
@@ -247,6 +252,23 @@ export const useAppStore = create<AppState>()(
       if (profilesRes.data) {
         set({ systemUsers: profilesRes.data.map((p: any) => ({
           id: p.id, name: p.name, role: p.role, outletId: p.outlet_id
+        }))});
+      }
+      if (shiftsRes.data && shiftsRes.data.length > 0) {
+        const s = shiftsRes.data[0];
+        set({ activeShift: {
+          id: s.id, cashierId: s.cashier_id, outletId: s.outlet_id, 
+          startTime: s.start_time, startCash: s.start_cash, status: s.status
+        }});
+      } else {
+        set({ activeShift: null });
+      }
+      if (txRes.data) {
+        set({ transactions: txRes.data.map((t: any) => ({
+          id: t.id, date: t.date, subtotal: t.subtotal, tax: t.tax, tip: t.tip, total: t.total, method: t.method, customerName: t.customer_name,
+          items: (t.transaction_items || []).map((i: any) => ({
+            id: i.id, name: i.name, price: i.price, qty: i.qty, type: i.type, kapsterId: i.kapster_id, commissionType: i.commission_type, commissionValue: i.commission_value
+          }))
         }))});
       }
     }

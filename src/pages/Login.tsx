@@ -42,31 +42,8 @@ export default function Login() {
     });
 
     if (error) {
-      // Bootstrap admin account automatically if login fails
-      const { data: signUpData, error: signUpError } = await insforge.auth.signUp({
-        email,
-        password
-      });
-      
-      if (signUpError) {
-        setIsLoading(false);
-        return toast.error(`Login gagal: ${error.message}. Daftar juga gagal: ${signUpError.message}`);
-      } else {
-        
-        // Also insert into profiles for this new admin
-        if (signUpData?.user) {
-          const { data: outlets } = await insforge.database.from('outlets').select('id').limit(1);
-          if (outlets && outlets.length > 0) {
-            await insforge.database.from('profiles').insert([
-              { id: signUpData.user.id, name: 'Admin Barbershop', role: 'admin', outlet_id: outlets[0].id }
-            ]);
-          }
-        }
-
-        toast.success('Akun Admin berhasil dibuat otomatis. Silakan klik Login sekali lagi.');
-        setIsLoading(false);
-        return;
-      }
+      setIsLoading(false);
+      return toast.error('Login gagal: Email atau password salah.');
     }
     
     // Fetch profile and update local state so ProtectedRoute doesn't kick us out

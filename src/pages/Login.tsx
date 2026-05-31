@@ -52,6 +52,7 @@ export default function Login() {
       const { data: profile } = await insforge.database.from('profiles').select('*').eq('id', userData.user.id).single();
       if (profile) {
         login({ id: userData.user.id, name: profile.name, role: profile.role, outletId: profile.outlet_id });
+        await useAppStore.getState().initDb();
       } else {
         // Profile is missing (maybe because RLS blocked it during sign-up), create it now!
         const { data: outlets } = await insforge.database.from('outlets').select('id').limit(1);
@@ -60,6 +61,7 @@ export default function Login() {
             { id: userData.user.id, name: 'Admin Barbershop', role: 'admin', outlet_id: outlets[0].id }
           ]);
           login({ id: userData.user.id, name: 'Admin Barbershop', role: 'admin', outletId: outlets[0].id });
+          await useAppStore.getState().initDb();
         }
       }
     }

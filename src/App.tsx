@@ -33,10 +33,10 @@ export default function App() {
     // Setup Auth Check
     insforge.auth.getCurrentUser().then(({ data: { user } }) => {
       if (user) {
-        // Fetch profile
         insforge.database.from('profiles').select('*').eq('id', user.id).single().then(({ data: profile }) => {
           if (profile) {
             login({ id: user.id, name: profile.name, role: profile.role, outletId: profile.outlet_id });
+            initDb();
           }
         });
       }

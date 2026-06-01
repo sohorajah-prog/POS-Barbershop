@@ -457,7 +457,10 @@ export default function POS() {
         flex: 1, 
         display: 'flex', 
         flexDirection: 'column', 
-        height: '100%', 
+        height: 'fit-content', 
+        position: 'sticky',
+        top: '24px',
+        maxHeight: 'calc(100vh - 100px)',
         minHeight: '400px',
         padding: '24px'
       }}>

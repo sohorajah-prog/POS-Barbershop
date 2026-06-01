@@ -169,7 +169,8 @@ export const useAppStore = create<AppState>()(
     addService: async (service) => {
       const { data, error } = await insforge.database.from('services').insert([{
         outlet_id: get().activeOutlet?.id,
-        name: service.name, category: service.category, price: service.price, duration: service.duration
+        name: service.name, category: service.category, price: service.price, duration: service.duration,
+        commission_type: service.commissionType, commission_value: service.commissionValue
       }]).select().single();
       if (error) throw error;
       set((state) => ({ services: [...state.services, { ...service, id: data.id }] }));
@@ -180,6 +181,8 @@ export const useAppStore = create<AppState>()(
       if (data.category !== undefined) updates.category = data.category;
       if (data.price !== undefined) updates.price = data.price;
       if (data.duration !== undefined) updates.duration = data.duration;
+      if (data.commissionType !== undefined) updates.commission_type = data.commissionType;
+      if (data.commissionValue !== undefined) updates.commission_value = data.commissionValue;
       
       const { error } = await insforge.database.from('services').update(updates).eq('id', id);
       if (error) throw error;

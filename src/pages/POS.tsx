@@ -262,7 +262,7 @@ export default function POS() {
   };
 
   return (
-    <div style={{ display: 'flex', gap: '24px', height: 'calc(100vh - 100px)', width: '100%', alignItems: 'stretch' }}>
+    <div className="responsive-row" style={{ gap: '24px', flex: 1, width: '100%', alignItems: 'stretch', minHeight: 0 }}>
       
       {/* Left Column: Menu Selector */}
       <div style={{ 
@@ -271,7 +271,8 @@ export default function POS() {
         flexDirection: 'column', 
         gap: '24px', 
         overflowY: 'auto', 
-        paddingRight: '6px' 
+        paddingRight: '6px',
+        minHeight: '400px'
       }}>
         
         {/* Card Choose Kapster */}
@@ -407,12 +408,12 @@ export default function POS() {
       </div>
 
       {/* Right Column: Checkout Cart Drawer */}
-      <div className="card" style={{ 
+      <div className="card w-full-mobile" style={{ 
         flex: 1, 
         display: 'flex', 
         flexDirection: 'column', 
         height: '100%', 
-        minWidth: '350px',
+        minHeight: '400px',
         padding: '24px'
       }}>
         
@@ -615,7 +616,7 @@ export default function POS() {
             </div>
 
             {/* Modal Content - 2 Columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '400px' }}>
+            <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '400px' }}>
               
               {/* Left Column (Input) */}
               <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>

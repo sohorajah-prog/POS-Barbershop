@@ -178,6 +178,7 @@ export default function Catalog() {
 
       {/* Catalog Table Container */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="table-container">
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead style={{ backgroundColor: 'rgba(255, 255, 255, 0.015)', borderBottom: '1px solid var(--color-card-border)' }}>
             <tr>
@@ -276,6 +277,7 @@ export default function Catalog() {
           </tbody>
         </table>
       </div>
+      </div>
 
       {/* CRUD Overlay Modal (Admin Only) */}
       {showModal && (
@@ -352,7 +354,7 @@ export default function Catalog() {
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Estimasi Durasi (Mnt)</label>
                       <input 
@@ -375,7 +377,7 @@ export default function Catalog() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Jenis Komisi</label>
                       <select 
@@ -417,7 +419,7 @@ export default function Catalog() {
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Harga Jual (Rp)</label>
                       <input 

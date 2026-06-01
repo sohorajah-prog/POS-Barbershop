@@ -1,5 +1,6 @@
 
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { 
   LayoutDashboard, 
@@ -10,7 +11,9 @@ import {
   ClipboardList, 
   BarChart2,
   Settings as SettingsIcon,
-  LogOut
+  LogOut,
+  Menu,
+  X as CloseIcon
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -22,6 +25,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { user, logout, activeOutlet } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -44,20 +48,54 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--color-canvas)', color: 'var(--color-text-primary)' }}>
-      {/* Sidebar Gelap Premium */}
-      <aside style={{
-        width: '260px',
-        backgroundColor: 'var(--color-sidebar)',
-        borderRight: '1px solid var(--color-card-border)',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--color-canvas)', color: 'var(--color-text-primary)' }}>
+      
+      {/* Mobile Header */}
+      <div className="show-on-mobile" style={{ 
+        height: '60px', 
+        backgroundColor: 'var(--color-sidebar)', 
+        borderBottom: '1px solid var(--color-card-border)',
+        alignItems: 'center',
+        padding: '0 16px',
+        justifyContent: 'space-between',
         position: 'sticky',
         top: 0,
-        zIndex: 50
+        zIndex: 40
       }}>
-        {/* Branding Logo Area */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {activeOutlet?.logoUrl ? (
+            <img src={activeOutlet.logoUrl} alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '6px' }} />
+          ) : (
+            <div style={{ width: '32px', height: '32px', backgroundColor: 'var(--color-gold)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#050506' }}>
+              <Scissors size={18} />
+            </div>
+          )}
+          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-white)' }}>
+            {activeOutlet?.name || 'POS Barber'}
+          </div>
+        </div>
+        <button onClick={() => setIsMobileMenuOpen(true)} style={{ color: 'var(--color-white)', padding: '4px' }}>
+          <Menu size={24} />
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        
+        {/* Sidebar Overlay */}
+        {isMobileMenuOpen && (
+          <div className="sidebar-overlay" onClick={() => setIsMobileMenuOpen(false)} />
+        )}
+
+        {/* Sidebar Gelap Premium */}
+        <aside className={`app-sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
+          {/* Close button for mobile inside sidebar */}
+          <div className="show-on-mobile" style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 60 }}>
+            <button onClick={() => setIsMobileMenuOpen(false)} style={{ color: 'var(--color-text-secondary)', padding: '4px' }}>
+              <CloseIcon size={24} />
+            </button>
+          </div>
+          
+          {/* Branding Logo Area */}
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -127,7 +165,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
               return (
                 <li key={item.path}>
                   <button
-                    onClick={() => navigate(item.path)}
+                    onClick={() => {
+                      navigate(item.path);
+                      setIsMobileMenuOpen(false);
+                    }}
                     style={{
                       width: 'calc(100% - 24px)',
                       margin: '0 12px',
@@ -262,21 +303,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       </aside>
 
-      {/* Main Content Area - No stiff white headers */}
-      <main style={{ 
-        flex: 1, 
-        height: '100vh', 
-        overflowY: 'auto', 
-        padding: '32px 40px',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+      {/* Main Content Area */}
+      <main className="main-content">
         <div key={location.pathname} style={{ animation: 'fadeIn 0.25s ease-out forwards', flex: 1, display: 'flex', flexDirection: 'column' }}>
           {children}
         </div>
       </main>
 
-
+      </div>
     </div>
   );
 }

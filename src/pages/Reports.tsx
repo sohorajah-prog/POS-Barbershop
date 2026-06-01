@@ -165,6 +165,7 @@ export default function Reports() {
           <BarChart2 size={18} style={{ color: 'var(--color-gold)' }} />
           <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-white)', margin: 0 }}>Histori Transaksi Terakhir</h3>
         </div>
+      <div className="table-container">
         <table style={{ width: '100%' }}>
           <thead>
             <tr>
@@ -223,6 +224,7 @@ export default function Reports() {
             )}
           </tbody>
         </table>
+      </div>
       </div>
 
     </div>

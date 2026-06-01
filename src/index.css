@@ -107,13 +107,95 @@ input:disabled, select:disabled, textarea:disabled {
   background-color: rgba(255, 255, 255, 0.01);
 }
 
-/* Responsive Adjustments */
+/* Responsive Adjustments & Utility Classes */
+.hide-on-mobile {
+  display: flex; /* Default state for desktop */
+}
+
+.show-on-mobile {
+  display: none; /* Default state for desktop */
+}
+
+.responsive-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.main-content {
+  flex: 1;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-container {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.app-sidebar {
+  width: 260px;
+  background-color: var(--color-sidebar);
+  border-right: 1px solid var(--color-card-border);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: transform 0.3s ease;
+}
+
 @media (max-width: 768px) {
-  .sidebar {
-    width: 60px;
+  .app-sidebar {
+    position: fixed;
+    transform: translateX(-100%);
   }
-  .sidebar span {
-    display: none;
+  .app-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  .show-on-mobile {
+    display: flex !important;
+  }
+  
+  .responsive-row {
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  .main-content {
+    padding: 16px !important;
+    height: calc(100vh - 60px); /* Account for mobile header */
+  }
+
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .sidebar-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 40;
+    backdrop-filter: blur(4px);
+  }
+
+  .w-full-mobile {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 }
 

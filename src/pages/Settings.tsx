@@ -415,6 +415,7 @@ export default function Settings() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="table-container">
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-card-border)', color: 'var(--color-text-secondary)' }}>
@@ -453,6 +454,7 @@ export default function Settings() {
               ))}
             </tbody>
           </table>
+        </div>
 
           <form onSubmit={handleAddUser} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end', marginTop: '8px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
             <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -497,6 +499,7 @@ export default function Settings() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="table-container">
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-card-border)', color: 'var(--color-text-secondary)' }}>
@@ -547,6 +550,7 @@ export default function Settings() {
               ))}
             </tbody>
           </table>
+        </div>
 
           <form onSubmit={handleAddKapster} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', marginTop: '8px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>

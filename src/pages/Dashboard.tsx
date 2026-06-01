@@ -240,7 +240,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Grid: Line Chart & Quick Queue Panel */}
-      <div style={{ 
+      <div className="grid-responsive" style={{ 
         display: 'grid', 
         gridTemplateColumns: '2.4fr 1fr', 
         gap: '24px',

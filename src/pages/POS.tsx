@@ -942,7 +942,7 @@ export default function POS() {
             }}>
               {/* Receipt Content */}
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <h2 style={{ margin: '0 0 6px 0', fontSize: '16px', letterSpacing: '2px', fontWeight: 'bold', textTransform: 'uppercase' }}>{activeOutlet?.name || ''}</h2>
+                <h2 style={{ margin: '0 0 6px 0', fontSize: '18px', letterSpacing: '1px', fontWeight: 900, color: '#000', textTransform: 'uppercase' }}>{activeOutlet?.name || ''}</h2>
                 <p style={{ margin: 0, fontSize: '11px', color: '#333' }}>{activeOutlet?.address || ''}</p>
                 {activeOutlet?.phone && <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#333' }}>Telp: {activeOutlet.phone}</p>}
               </div>

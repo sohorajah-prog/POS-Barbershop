@@ -115,8 +115,10 @@ export const useAppStore = create<AppState>()(
     clearAppStore: async () => {
       const outletId = get().activeOutlet?.id;
       if (outletId) {
-        await insforge.database.from('transactions').delete().eq('outlet_id', outletId);
-        await insforge.database.from('shifts').delete().eq('outlet_id', outletId);
+        const { error: err1 } = await insforge.database.from('transactions').delete().eq('outlet_id', outletId);
+        if (err1) throw err1;
+        const { error: err2 } = await insforge.database.from('shifts').delete().eq('outlet_id', outletId);
+        if (err2) throw err2;
       }
       set({
         user: null,

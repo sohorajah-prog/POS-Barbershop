@@ -9,7 +9,7 @@ async function setupAdmin() {
   console.log('Signing up admin user...');
   const { data, error } = await insforge.auth.signUp({
     email: 'admin@barbershop.com',
-    password: 'D@ta2026.',
+    password: 'D@ta2026',
   });
   
   if (error) {

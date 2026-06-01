@@ -921,22 +921,36 @@ export default function POS() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.95)',
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
-          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
           zIndex: 2000,
+          padding: '20px'
         }}>
-          {/* Header */}
-          <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-white)', margin: 0 }}>Transaksi Berhasil!</h2>
-            <button onClick={closeReceiptAndContinue} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-              <X size={20} />
-            </button>
-          </div>
+          <div style={{
+            width: '100%',
+            maxWidth: '460px',
+            backgroundColor: '#04100a',
+            borderRadius: '16px',
+            border: '1px solid var(--color-card-border)',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+          }}>
+            {/* Header */}
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-white)', margin: 0 }}>Transaksi Berhasil!</h2>
+              <button onClick={closeReceiptAndContinue} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
 
-          {/* Receipt Wrapper */}
-          <div className="no-print-wrapper" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
+            {/* Receipt Wrapper */}
+            <div className="no-print-wrapper" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '30px 20px', backgroundColor: 'rgba(255,255,255,0.015)' }}>
             
             {/* The Actual Receipt Paper */}
             <div id="receipt-paper" style={{
@@ -1034,7 +1048,7 @@ export default function POS() {
 
           {/* Footer Actions */}
           <div className="no-print" style={{ 
-            padding: '24px', 
+            padding: '20px 24px', 
             borderTop: '1px solid rgba(255,255,255,0.05)', 
             display: 'flex', 
             justifyContent: 'center',
@@ -1050,7 +1064,7 @@ export default function POS() {
                 gap: '8px', 
                 backgroundColor: '#071a11', 
                 color: '#fff', 
-                border: '1px solid #333',
+                border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '8px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -1081,6 +1095,7 @@ export default function POS() {
             >
               <Printer size={18} /> Cetak Struk
             </button>
+          </div>
           </div>
         </div>
       )}

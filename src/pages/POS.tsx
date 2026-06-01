@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useAppStore';
 import { ShoppingCart, Trash2, CheckCircle, User, ShieldAlert, X, Plus, Printer, MessageCircle, Send } from 'lucide-react';
 import type { Transaction } from '../types';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface CartItem {
   id: string;
@@ -36,6 +38,7 @@ export default function POS() {
   const [showWaModal, setShowWaModal] = useState(false);
   const [waPhone, setWaPhone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   if (activeShift?.status !== 'open') {
     return (
@@ -220,41 +223,77 @@ export default function POS() {
     setShowWaModal(true);
   };
 
-  const executeWhatsAppSend = (e: React.FormEvent) => {
+  const executeWhatsAppSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!completedTransaction) return;
     
-    // Clean phone number (remove spaces, dashes)
-    let cleanedPhone = waPhone.replace(/[\s-]/g, '');
-    if (cleanedPhone.startsWith('0')) {
-      cleanedPhone = '62' + cleanedPhone.substring(1);
-    }
-    
-    let text = `*STRUK PEMBAYARAN - ${activeOutlet?.name?.toUpperCase() || 'BARBERTOPIA'}*\n`;
-    text += `ID: ${completedTransaction.id}\n`;
-    text += `Waktu: ${new Date(completedTransaction.date).toLocaleString('id-ID')}\n`;
-    text += `--------------------------------\n`;
-    
-    completedTransaction.items.forEach(item => {
-      text += `${item.name} (x${item.qty})\n`;
-      text += `Rp ${(item.price * item.qty).toLocaleString('id-ID')}\n`;
-    });
-    
-    text += `--------------------------------\n`;
-    text += `Subtotal: Rp ${completedTransaction.subtotal.toLocaleString('id-ID')}\n`;
-    text += `Pajak: Rp ${completedTransaction.tax.toLocaleString('id-ID')}\n`;
-    if (completedTransaction.tip > 0) {
-      text += `Tip: Rp ${completedTransaction.tip.toLocaleString('id-ID')}\n`;
-    }
-    text += `*TOTAL: Rp ${completedTransaction.total.toLocaleString('id-ID')}*\n`;
-    text += `Metode: ${completedTransaction.method}\n`;
-    text += `--------------------------------\n`;
-    text += `Terima kasih atas kunjungan Anda!`;
+    setIsGeneratingPdf(true);
 
-    const encodedText = encodeURIComponent(text);
-    const waUrl = cleanedPhone ? `https://wa.me/${cleanedPhone}?text=${encodedText}` : `https://wa.me/?text=${encodedText}`;
-    window.open(waUrl, '_blank');
-    setShowWaModal(false);
+    try {
+      // 1. Generate PDF from receipt
+      const receiptEl = document.getElementById('receipt-paper');
+      if (receiptEl) {
+        const canvas = await html2canvas(receiptEl, { scale: 2, useCORS: true, logging: false });
+        const imgData = canvas.toDataURL('image/png');
+        
+        // Receipt paper width is 80mm
+        const pdfWidth = 80;
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        // Create PDF with exactly the dimensions of the receipt
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: [pdfWidth, pdfHeight]
+        });
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Struk-POS-${completedTransaction.id}.pdf`);
+      }
+
+      // 2. Format WA text and open WA
+      let cleanedPhone = waPhone.replace(/[\s-]/g, '');
+      if (cleanedPhone.startsWith('0')) {
+        cleanedPhone = '62' + cleanedPhone.substring(1);
+      }
+      
+      let text = `*STRUK PEMBAYARAN - ${activeOutlet?.name?.toUpperCase() || 'BARBERTOPIA'}*\n`;
+      text += `ID: ${completedTransaction.id}\n`;
+      text += `Waktu: ${new Date(completedTransaction.date).toLocaleString('id-ID')}\n`;
+      text += `--------------------------------\n`;
+      
+      completedTransaction.items.forEach(item => {
+        text += `${item.name} (x${item.qty})\n`;
+        text += `Rp ${(item.price * item.qty).toLocaleString('id-ID')}\n`;
+      });
+      
+      text += `--------------------------------\n`;
+      text += `Subtotal: Rp ${completedTransaction.subtotal.toLocaleString('id-ID')}\n`;
+      text += `Pajak: Rp ${completedTransaction.tax.toLocaleString('id-ID')}\n`;
+      if (completedTransaction.tip > 0) {
+        text += `Tip: Rp ${completedTransaction.tip.toLocaleString('id-ID')}\n`;
+      }
+      text += `*TOTAL: Rp ${completedTransaction.total.toLocaleString('id-ID')}*\n`;
+      text += `Metode: ${completedTransaction.method}\n`;
+      text += `--------------------------------\n`;
+      text += `Terima kasih atas kunjungan Anda!\n\n`;
+      text += `_(Catatan Kasir: Silakan cek lampiran PDF untuk struk resmi)_`;
+
+      const encodedText = encodeURIComponent(text);
+      const waUrl = cleanedPhone ? `https://wa.me/${cleanedPhone}?text=${encodedText}` : `https://wa.me/?text=${encodedText}`;
+      
+      // Delay slightly to ensure download starts before navigation
+      setTimeout(() => {
+        window.open(waUrl, '_blank');
+        setShowWaModal(false);
+        setIsGeneratingPdf(false);
+      }, 800);
+      
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal membuat PDF Struk');
+      setIsGeneratingPdf(false);
+    }
   };
 
   const closeReceiptAndContinue = () => {
@@ -853,12 +892,13 @@ export default function POS() {
               />
             </div>
             
-            <button type="submit" style={{
+            <button type="submit" disabled={isGeneratingPdf} style={{
               background: '#25D366', border: 'none', padding: '14px', borderRadius: '8px',
-              color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px'
+              color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: isGeneratingPdf ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
+              opacity: isGeneratingPdf ? 0.7 : 1
             }}>
               <Send size={18} />
-              Kirim Struk
+              {isGeneratingPdf ? 'Memproses PDF...' : 'Kirim Struk & Buka WA'}
             </button>
           </form>
         </div>

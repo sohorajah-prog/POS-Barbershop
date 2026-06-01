@@ -72,7 +72,8 @@ export interface AppState {
   closeShift: (endCash: number, expectedCash: number) => Promise<void>;
   transactions: Transaction[];
   addTransaction: (transaction: Transaction) => Promise<void>;
-  clearAppStore: () => void;
+  removeTransaction: (id: string) => Promise<void>;
+  clearAppStore: () => Promise<void>;
   
   systemUsers: User[];
   addUser: (user: User) => void; // user addition is handled in UI for now

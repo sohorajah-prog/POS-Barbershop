@@ -156,11 +156,15 @@ export default function Settings() {
             Batal
           </button>
           <button 
-            onClick={() => {
+            onClick={async () => {
               toast.dismiss(t.id);
-              clearAppStore();
-              toast.success('Data sistem berhasil di-reset.');
-              navigate('/login');
+              try {
+                await clearAppStore();
+                toast.success('Data sistem berhasil di-reset.');
+                navigate('/login');
+              } catch (err: any) {
+                toast.error('Gagal reset sistem: ' + err.message);
+              }
             }}
             style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--color-danger)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}
           >

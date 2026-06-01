@@ -106,12 +106,25 @@ export const useAppStore = create<AppState>()(
       set((state) => ({ transactions: [...state.transactions, transaction] }));
     },
 
-    clearAppStore: () => set({
-      user: null,
-      activeShift: null,
-      transactions: [],
-      walkinQueue: []
-    }),
+    removeTransaction: async (id) => {
+      const { error } = await insforge.database.from('transactions').delete().eq('id', id);
+      if (error) throw error;
+      set((state) => ({ transactions: state.transactions.filter(t => t.id !== id) }));
+    },
+
+    clearAppStore: async () => {
+      const outletId = get().activeOutlet?.id;
+      if (outletId) {
+        await insforge.database.from('transactions').delete().eq('outlet_id', outletId);
+        await insforge.database.from('shifts').delete().eq('outlet_id', outletId);
+      }
+      set({
+        user: null,
+        activeShift: null,
+        transactions: [],
+        walkinQueue: []
+      });
+    },
 
     addUser: (user) => set((state) => ({ systemUsers: [...state.systemUsers, { ...user, password: user.password || '1234' }] })),
     updateUser: (id, data) => set((state) => ({

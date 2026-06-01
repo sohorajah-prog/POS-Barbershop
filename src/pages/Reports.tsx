@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { BarChart2, Calendar, Download, TrendingUp } from 'lucide-react';
+import { BarChart2, Calendar, Download, TrendingUp, Trash2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 export default function Reports() {
-  const { transactions, kapsters } = useAppStore();
+  const { transactions, kapsters, user, removeTransaction } = useAppStore();
   
   // Format YYYY-MM
   const [selectedMonth, setSelectedMonth] = useState<string>(
@@ -174,12 +174,13 @@ export default function Reports() {
               <th>Kapster</th>
               <th>Metode</th>
               <th>Total</th>
+              {user?.role === 'admin' && <th>Aksi</th>}
             </tr>
           </thead>
           <tbody>
             {filteredTransactions.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-secondary)' }}>Belum ada histori transaksi.</td>
+                <td colSpan={user?.role === 'admin' ? 7 : 6} style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-secondary)' }}>Belum ada histori transaksi.</td>
               </tr>
             ) : (
               [...filteredTransactions].reverse().map(trx => {
@@ -196,6 +197,26 @@ export default function Reports() {
                     <td>{kapsterName}</td>
                     <td>{trx.method}</td>
                     <td style={{ fontWeight: 600, color: 'var(--color-gold)' }}>Rp {trx.total.toLocaleString('id-ID')}</td>
+                    {user?.role === 'admin' && (
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Yakin ingin menghapus transaksi ini?')) {
+                              try {
+                                await removeTransaction(trx.id);
+                                toast.success('Transaksi berhasil dihapus');
+                              } catch (e: any) {
+                                toast.error('Gagal menghapus: ' + e.message);
+                              }
+                            }
+                          }}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer' }}
+                          title="Hapus Transaksi"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })

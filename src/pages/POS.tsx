@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useAppStore';
@@ -39,6 +39,12 @@ export default function POS() {
   const [waPhone, setWaPhone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  useEffect(() => {
+    // Reset local states (termasuk tip konsumen) saat kas/shift berganti
+    setCart([]);
+    setTipAmount(0);
+  }, [activeShift?.id]);
 
   if (activeShift?.status !== 'open') {
     return (

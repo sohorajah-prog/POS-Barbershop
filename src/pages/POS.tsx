@@ -143,7 +143,40 @@ export default function POS() {
     }
 
     setIsProcessing(true);
-    const transactionMethod = splitPayments.length > 0 ? 'Split Payment' : paymentMethod;
+    
+    let transactionMethod = paymentMethod;
+    
+    if (splitPayments.length > 0) {
+      const allPayments = [...splitPayments];
+      if (paymentAmount && Number(paymentAmount) > 0) {
+        allPayments.push({ method: paymentMethod, amount: Number(paymentAmount) });
+      }
+      
+      let cashAmt = 0;
+      let qrisAmt = 0;
+      let debitAmt = 0;
+      
+      allPayments.forEach(p => {
+        if (p.method === 'Uang Tunai (Cash)') cashAmt += p.amount;
+        else if (p.method === 'QRIS / E-Wallet') qrisAmt += p.amount;
+        else debitAmt += p.amount;
+      });
+
+      // Handle change (kembalian) which is typically taken from cash
+      const totalAllPaid = cashAmt + qrisAmt + debitAmt;
+      if (totalAllPaid > total) {
+        const change = totalAllPaid - total;
+        cashAmt -= change;
+      }
+
+      const parts = [];
+      if (cashAmt > 0) parts.push(`Tunai: ${cashAmt}`);
+      if (qrisAmt > 0) parts.push(`QRIS: ${qrisAmt}`);
+      if (debitAmt > 0) parts.push(`Debit: ${debitAmt}`);
+      
+      transactionMethod = `Split Payment (${parts.join(', ')})`;
+    }
+
     const newTransaction: Transaction = {
       id: `trx-${Date.now()}`,
       date: new Date().toISOString(),

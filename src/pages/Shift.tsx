@@ -11,9 +11,30 @@ export default function Shift() {
   const [isClosing, setIsClosing] = useState(false);
 
   // Calculate expected cash based on transactions during this shift
-  const cashRevenue = transactions.filter(t => t.method === 'Uang Tunai (Cash)').reduce((sum, t) => sum + t.total, 0);
-  const qrisRevenue = transactions.filter(t => t.method === 'QRIS / E-Wallet').reduce((sum, t) => sum + t.total, 0);
-  const otherRevenue = transactions.filter(t => !['Uang Tunai (Cash)', 'QRIS / E-Wallet'].includes(t.method)).reduce((sum, t) => sum + t.total, 0);
+  const shiftTransactions = activeShift ? transactions.filter(t => t.shiftId === activeShift.id) : [];
+
+  let cashRevenue = 0;
+  let qrisRevenue = 0;
+  let otherRevenue = 0;
+
+  shiftTransactions.forEach(t => {
+    if (t.method === 'Uang Tunai (Cash)') {
+      cashRevenue += t.total;
+    } else if (t.method === 'QRIS / E-Wallet') {
+      qrisRevenue += t.total;
+    } else if (t.method.startsWith('Split Payment')) {
+      const tunaiMatch = t.method.match(/Tunai:\s*(\d+)/);
+      if (tunaiMatch) cashRevenue += parseInt(tunaiMatch[1], 10);
+      
+      const qrisMatch = t.method.match(/QRIS:\s*(\d+)/);
+      if (qrisMatch) qrisRevenue += parseInt(qrisMatch[1], 10);
+
+      const debitMatch = t.method.match(/Debit:\s*(\d+)/);
+      if (debitMatch) otherRevenue += parseInt(debitMatch[1], 10);
+    } else {
+      otherRevenue += t.total;
+    }
+  });
 
   // Ekspektasi kas fisik laci HANYA terdiri dari modal awal + uang tunai
   const expectedCashDrawer = activeShift ? activeShift.startCash + cashRevenue : 0; 

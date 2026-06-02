@@ -127,7 +127,7 @@ export const useAppStore = create<AppState>()(
         set({ products: updatedProducts });
       }
       
-      set((state) => ({ transactions: [...state.transactions, transaction] }));
+      set((state) => ({ transactions: [...state.transactions, { ...transaction, shiftId: get().activeShift?.id }] }));
     },
 
     removeTransaction: async (id) => {
@@ -307,7 +307,7 @@ export const useAppStore = create<AppState>()(
       }
       if (txRes.data) {
         set({ transactions: txRes.data.map((t: any) => ({
-          id: t.id, date: t.date, subtotal: t.subtotal, tax: t.tax, tip: t.tip, total: t.total, method: t.method, customerName: t.customer_name,
+          id: t.id, date: t.date, subtotal: t.subtotal, tax: t.tax, tip: t.tip, total: t.total, method: t.method, customerName: t.customer_name, shiftId: t.shift_id,
           items: (t.transaction_items || []).map((i: any) => ({
             id: i.id, name: i.name, price: i.price, qty: i.qty, type: i.type, kapsterId: i.kapster_id, commissionType: i.commission_type, commissionValue: i.commission_value
           }))

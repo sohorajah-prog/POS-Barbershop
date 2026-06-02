@@ -59,6 +59,7 @@ export interface Transaction {
   total: number;
   method: string;
   customerName?: string;
+  shiftId?: string;
 }
 
 export interface AppState {

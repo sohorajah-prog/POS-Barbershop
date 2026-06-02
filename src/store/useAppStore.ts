@@ -139,6 +139,39 @@ export const useAppStore = create<AppState>()(
     clearAppStore: async () => {
       const outletId = get().activeOutlet?.id;
       if (outletId) {
+        // 1. Restore product stock by calculating all sold products before deleting
+        try {
+          const { data: allTx } = await insforge.database
+            .from('transactions')
+            .select('id, transaction_items(*)')
+            .eq('outlet_id', outletId);
+            
+          if (allTx && allTx.length > 0) {
+            const productQuantities: Record<string, number> = {};
+            
+            allTx.forEach((tx: any) => {
+              const items = tx.transaction_items || [];
+              items.forEach((item: any) => {
+                if (item.type === 'product' && item.name) {
+                  productQuantities[item.name] = (productQuantities[item.name] || 0) + Number(item.qty || 0);
+                }
+              });
+            });
+            
+            const currentProducts = get().products;
+            for (const product of currentProducts) {
+              if (productQuantities[product.name]) {
+                const restoredStock = Number(product.stock) + productQuantities[product.name];
+                await insforge.database.from('products')
+                  .update({ stock: restoredStock })
+                  .eq('id', product.id);
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error restoring stocks", e);
+        }
+
         const { error: err1 } = await insforge.database.from('transactions').delete().eq('outlet_id', outletId);
         if (err1) throw err1;
         const { error: err2 } = await insforge.database.from('shifts').delete().eq('outlet_id', outletId);

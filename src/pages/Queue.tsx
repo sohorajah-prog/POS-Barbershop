@@ -11,6 +11,7 @@ export default function Queue() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [selectedService, setSelectedService] = useState('');
   const [selectedKapster, setSelectedKapster] = useState('');
 
@@ -29,6 +30,7 @@ export default function Queue() {
     setQueue([...queue, {
       id: `q-${Date.now()}`,
       name: customerName,
+      phone: customerPhone,
       service,
       kapster,
       status: 'waiting',
@@ -37,6 +39,7 @@ export default function Queue() {
 
     setIsModalOpen(false);
     setCustomerName('');
+    setCustomerPhone('');
     setSelectedService('');
     setSelectedKapster('');
   };
@@ -115,6 +118,11 @@ export default function Queue() {
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <strong>Layanan:</strong> {q.service.name}
                     </span>
+                    {q.phone && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <strong>No. HP:</strong> {q.phone}
+                      </span>
+                    )}
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <strong>Kapster:</strong> {q.kapster.name}
                     </span>
@@ -203,6 +211,16 @@ export default function Queue() {
                   onChange={e => setCustomerName(e.target.value)}
                   placeholder="Masukkan nama pelanggan"
                   required
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Nomor Handphone (Opsional)</label>
+                <input 
+                  type="tel" 
+                  value={customerPhone}
+                  onChange={e => setCustomerPhone(e.target.value)}
+                  placeholder="Masukkan nomor HP"
                 />
               </div>
 

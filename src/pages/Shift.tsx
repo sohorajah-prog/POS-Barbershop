@@ -11,8 +11,12 @@ export default function Shift() {
   const [isClosing, setIsClosing] = useState(false);
 
   // Calculate expected cash based on transactions during this shift
-  const totalRevenue = transactions.reduce((sum, t) => sum + t.total, 0);
-  const expectedCash = activeShift ? activeShift.startCash + totalRevenue : 0; 
+  const cashRevenue = transactions.filter(t => t.method === 'Uang Tunai (Cash)').reduce((sum, t) => sum + t.total, 0);
+  const qrisRevenue = transactions.filter(t => t.method === 'QRIS / E-Wallet').reduce((sum, t) => sum + t.total, 0);
+  const otherRevenue = transactions.filter(t => !['Uang Tunai (Cash)', 'QRIS / E-Wallet'].includes(t.method)).reduce((sum, t) => sum + t.total, 0);
+
+  // Ekspektasi kas fisik laci HANYA terdiri dari modal awal + uang tunai
+  const expectedCashDrawer = activeShift ? activeShift.startCash + cashRevenue : 0; 
 
   const handleOpenShift = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +43,7 @@ export default function Shift() {
     e.preventDefault();
     setIsClosing(true);
     try {
-      await closeShift(Number(endCash), Number(expectedCash));
+      await closeShift(Number(endCash), Number(expectedCashDrawer));
       toast.success('Shift berhasil ditutup!');
     } catch (e: any) {
       toast.error('Gagal menutup shift: ' + e.message);
@@ -91,21 +95,39 @@ export default function Shift() {
 
             {/* Form Tutup Shift */}
             <form onSubmit={handleCloseShift} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  Ekspektasi Kas Sistem (Omzet + Modal Awal)
-                </label>
-                <input 
-                  type="text" 
-                  value={`Rp ${expectedCash.toLocaleString('id-ID')}`} 
-                  disabled 
-                  style={{ width: '100%', fontWeight: 600 }} 
-                />
+              
+              {/* Rincian Pemasukan */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', backgroundColor: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                  <span>Pemasukan Uang Tunai:</span>
+                  <span style={{ color: 'var(--color-white)', fontWeight: 600 }}>Rp {cashRevenue.toLocaleString('id-ID')}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                  <span>Pemasukan QRIS / E-Wallet:</span>
+                  <span style={{ color: 'var(--color-white)', fontWeight: 600 }}>Rp {qrisRevenue.toLocaleString('id-ID')}</span>
+                </div>
+                {otherRevenue > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                    <span>Metode Lainnya (Debit/Split):</span>
+                    <span style={{ color: 'var(--color-white)', fontWeight: 600 }}>Rp {otherRevenue.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                
+                <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                  <span>Modal Awal Laci:</span>
+                  <span style={{ color: 'var(--color-white)', fontWeight: 600 }}>Rp {activeShift.startCash.toLocaleString('id-ID')}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: 'var(--color-gold)', fontWeight: 700, marginTop: '4px' }}>
+                  <span>Ekspektasi Kas Fisik (Laci):</span>
+                  <span>Rp {expectedCashDrawer.toLocaleString('id-ID')}</span>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  Kas Fisik Aktual (Hitung Laci Kasir)
+                  Kas Fisik Aktual (Hitung Uang di Laci)
                 </label>
                 <div style={{ position: 'relative' }}>
                   <span style={{ 
@@ -144,9 +166,9 @@ export default function Shift() {
                 <span style={{ 
                   fontSize: '1.1rem', 
                   fontWeight: 700, 
-                  color: endCash - expectedCash < 0 ? 'var(--color-danger)' : 'var(--color-success)' 
+                  color: endCash - expectedCashDrawer < 0 ? 'var(--color-danger)' : 'var(--color-success)' 
                 }}>
-                  Rp {(endCash - expectedCash).toLocaleString('id-ID')}
+                  Rp {(endCash - expectedCashDrawer).toLocaleString('id-ID')}
                 </span>
               </div>
 

@@ -94,9 +94,9 @@ export default function POS() {
       return;
     }
 
-    const existing = cart.find(c => c.id === item.id && c.kapsterId === selectedKapsterId);
+    const existing = cart.find(c => c.id === item.id && (type === 'product' || c.kapsterId === selectedKapsterId));
     if (existing) {
-      setCart(cart.map(c => c.id === item.id && c.kapsterId === selectedKapsterId ? { ...c, qty: c.qty + 1 } : c));
+      setCart(cart.map(c => c.id === item.id && (type === 'product' || c.kapsterId === selectedKapsterId) ? { ...c, qty: c.qty + 1 } : c));
     } else {
       const kapster = type === 'service' ? kapsters.find(k => k.id === selectedKapsterId) : undefined;
       setCart([...cart, { 

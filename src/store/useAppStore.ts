@@ -102,6 +102,30 @@ export const useAppStore = create<AppState>()(
         const { error: itemsError } = await insforge.database.from('transaction_items').insert(items);
         if (itemsError) throw itemsError;
       }
+
+      // Decrease stock for product items
+      const productItems = transaction.items.filter(item => item.type === 'product');
+      if (productItems.length > 0) {
+        const updatedProducts = [...get().products];
+        
+        for (const item of productItems) {
+          const productIndex = updatedProducts.findIndex(p => p.id === item.id);
+          if (productIndex !== -1) {
+            const product = updatedProducts[productIndex];
+            const newStock = Math.max(0, Number(product.stock) - Number(item.qty));
+            
+            const { error: stockError } = await insforge.database.from('products')
+              .update({ stock: newStock })
+              .eq('id', product.id);
+            
+            if (stockError) throw stockError;
+            
+            updatedProducts[productIndex] = { ...product, stock: newStock };
+          }
+        }
+        
+        set({ products: updatedProducts });
+      }
       
       set((state) => ({ transactions: [...state.transactions, transaction] }));
     },

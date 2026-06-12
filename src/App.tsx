@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAppStore } from './store/useAppStore';
-import { insforge } from './lib/insforge';
+import { supabase } from './lib/supabase';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -31,9 +31,9 @@ export default function App() {
     initDb();
 
     // Setup Auth Check
-    insforge.auth.getCurrentUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        insforge.database.from('profiles').select('*').eq('id', user.id).single().then(({ data: profile }) => {
+        supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data: profile }) => {
           if (profile) {
             login({ id: user.id, name: profile.name, role: profile.role, outletId: profile.outlet_id });
             initDb();

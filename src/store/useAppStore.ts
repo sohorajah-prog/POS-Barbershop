@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { AppState } from '../types';
-import { insforge } from '../lib/insforge';
+import { supabase } from '../lib/supabase';
 
 export const useAppStore = create<AppState>()(
   (set, get) => ({
@@ -23,12 +23,12 @@ export const useAppStore = create<AppState>()(
 
     login: (user) => set({ user }),
     logout: () => {
-      insforge.auth.signOut();
+      supabase.auth.signOut();
       set({ user: null, activeShift: null });
     },
 
     setActiveOutlet: async (outlet) => {
-      const { error } = await insforge.database.from('outlets').update({
+      const { error } = await supabase.from('outlets').update({
         name: outlet.name,
         address: outlet.address,
         phone: outlet.phone,
@@ -39,7 +39,7 @@ export const useAppStore = create<AppState>()(
       set({ activeOutlet: outlet });
     },
     openShift: async (shift) => {
-      const { data, error } = await insforge.database.from('shifts').insert([{
+      const { data, error } = await supabase.from('shifts').insert([{
         cashier_id: shift.cashierId,
         outlet_id: shift.outletId,
         start_time: shift.startTime,
@@ -53,7 +53,7 @@ export const useAppStore = create<AppState>()(
       const state = get();
       if (!state.activeShift) return;
       const endTime = new Date().toISOString();
-      const { error } = await insforge.database.from('shifts').update({
+      const { error } = await supabase.from('shifts').update({
         status: 'closed',
         end_time: endTime,
         end_cash: endCash,
@@ -72,7 +72,7 @@ export const useAppStore = create<AppState>()(
     },
 
     addTransaction: async (transaction) => {
-      const { error: txError } = await insforge.database.from('transactions').insert([{
+      const { error: txError } = await supabase.from('transactions').insert([{
         id: transaction.id,
         outlet_id: get().activeOutlet?.id,
         shift_id: get().activeShift?.id,
@@ -99,7 +99,7 @@ export const useAppStore = create<AppState>()(
       }));
       
       if (items.length > 0) {
-        const { error: itemsError } = await insforge.database.from('transaction_items').insert(items);
+        const { error: itemsError } = await supabase.from('transaction_items').insert(items);
         if (itemsError) throw itemsError;
       }
 
@@ -114,7 +114,7 @@ export const useAppStore = create<AppState>()(
             const product = updatedProducts[productIndex];
             const newStock = Math.max(0, Number(product.stock) - Number(item.qty));
             
-            const { error: stockError } = await insforge.database.from('products')
+            const { error: stockError } = await supabase.from('products')
               .update({ stock: newStock })
               .eq('id', product.id);
             
@@ -131,7 +131,7 @@ export const useAppStore = create<AppState>()(
     },
 
     removeTransaction: async (id) => {
-      const { error } = await insforge.database.from('transactions').delete().eq('id', id);
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
       if (error) throw error;
       set((state) => ({ transactions: state.transactions.filter(t => t.id !== id) }));
     },
@@ -141,8 +141,7 @@ export const useAppStore = create<AppState>()(
       if (outletId) {
         // 1. Restore product stock by calculating all sold products before deleting
         try {
-          const { data: allTx } = await insforge.database
-            .from('transactions')
+          const { data: allTx } = await supabase.from('transactions')
             .select('id, transaction_items(*)')
             .eq('outlet_id', outletId);
             
@@ -162,7 +161,7 @@ export const useAppStore = create<AppState>()(
             for (const product of currentProducts) {
               if (productQuantities[product.name]) {
                 const restoredStock = Number(product.stock) + productQuantities[product.name];
-                await insforge.database.from('products')
+                await supabase.from('products')
                   .update({ stock: restoredStock })
                   .eq('id', product.id);
               }
@@ -172,9 +171,9 @@ export const useAppStore = create<AppState>()(
           console.error("Error restoring stocks", e);
         }
 
-        const { error: err1 } = await insforge.database.from('transactions').delete().eq('outlet_id', outletId);
+        const { error: err1 } = await supabase.from('transactions').delete().eq('outlet_id', outletId);
         if (err1) throw err1;
-        const { error: err2 } = await insforge.database.from('shifts').delete().eq('outlet_id', outletId);
+        const { error: err2 } = await supabase.from('shifts').delete().eq('outlet_id', outletId);
         if (err2) throw err2;
       }
       set({
@@ -194,7 +193,7 @@ export const useAppStore = create<AppState>()(
     })),
 
     addKapster: async (kapster) => {
-      const { data, error } = await insforge.database.from('kapsters').insert([{
+      const { data, error } = await supabase.from('kapsters').insert([{
         outlet_id: get().activeOutlet?.id,
         name: kapster.name,
         status: kapster.status,
@@ -211,12 +210,12 @@ export const useAppStore = create<AppState>()(
       if (data.commissionType !== undefined) updates.commission_type = data.commissionType;
       if (data.commissionValue !== undefined) updates.commission_value = data.commissionValue;
       
-      const { error } = await insforge.database.from('kapsters').update(updates).eq('id', id);
+      const { error } = await supabase.from('kapsters').update(updates).eq('id', id);
       if (error) throw error;
       set((state) => ({ kapsters: state.kapsters.map(k => k.id === id ? { ...k, ...data } : k) }));
     },
     removeKapster: async (id) => {
-      const { error } = await insforge.database.from('kapsters').delete().eq('id', id);
+      const { error } = await supabase.from('kapsters').delete().eq('id', id);
       if (error) throw error;
       set((state) => ({ kapsters: state.kapsters.filter(k => k.id !== id) }));
     },
@@ -224,7 +223,7 @@ export const useAppStore = create<AppState>()(
     setWalkinQueue: (queue) => set({ walkinQueue: queue }),
     setServices: (services) => set({ services }),
     addService: async (service) => {
-      const { data, error } = await insforge.database.from('services').insert([{
+      const { data, error } = await supabase.from('services').insert([{
         outlet_id: get().activeOutlet?.id,
         name: service.name, category: service.category, price: service.price, duration: service.duration,
         commission_type: service.commissionType, commission_value: service.commissionValue
@@ -241,19 +240,19 @@ export const useAppStore = create<AppState>()(
       if (data.commissionType !== undefined) updates.commission_type = data.commissionType;
       if (data.commissionValue !== undefined) updates.commission_value = data.commissionValue;
       
-      const { error } = await insforge.database.from('services').update(updates).eq('id', id);
+      const { error } = await supabase.from('services').update(updates).eq('id', id);
       if (error) throw error;
       set((state) => ({ services: state.services.map(s => s.id === id ? { ...s, ...data } : s) }));
     },
     removeService: async (id) => {
-      const { error } = await insforge.database.from('services').delete().eq('id', id);
+      const { error } = await supabase.from('services').delete().eq('id', id);
       if (error) throw error;
       set((state) => ({ services: state.services.filter(s => s.id !== id) }));
     },
 
     setProducts: (products) => set({ products }),
     addProduct: async (product) => {
-      const { data, error } = await insforge.database.from('products').insert([{
+      const { data, error } = await supabase.from('products').insert([{
         outlet_id: get().activeOutlet?.id,
         name: product.name, category: product.category, price: product.price, stock: product.stock
       }]).select().single();
@@ -267,12 +266,12 @@ export const useAppStore = create<AppState>()(
       if (data.price !== undefined) updates.price = data.price;
       if (data.stock !== undefined) updates.stock = data.stock;
       
-      const { error } = await insforge.database.from('products').update(updates).eq('id', id);
+      const { error } = await supabase.from('products').update(updates).eq('id', id);
       if (error) throw error;
       set((state) => ({ products: state.products.map(p => p.id === id ? { ...p, ...data } : p) }));
     },
     removeProduct: async (id) => {
-      const { error } = await insforge.database.from('products').delete().eq('id', id);
+      const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) throw error;
       set((state) => ({ products: state.products.filter(p => p.id !== id) }));
     },
@@ -280,7 +279,7 @@ export const useAppStore = create<AppState>()(
     // Add initialization action
     initDb: async () => {
       // For now, load outlets and some setup
-      const { data: outlets } = await insforge.database.from('outlets').select('*').limit(1);
+      const { data: outlets } = await supabase.from('outlets').select('*').limit(1);
       if (outlets && outlets.length > 0) {
         set({ 
           activeOutlet: {
@@ -298,15 +297,14 @@ export const useAppStore = create<AppState>()(
       if (!outletId) return;
 
       const [kapstersRes, servicesRes, productsRes, profilesRes, shiftsRes, txRes] = await Promise.all([
-        insforge.database.from('kapsters').select('*').eq('outlet_id', outletId),
-        insforge.database.from('services').select('*').eq('outlet_id', outletId),
-        insforge.database.from('products').select('*').eq('outlet_id', outletId),
-        insforge.database.from('profiles').select('*').eq('outlet_id', outletId),
-        insforge.database.from('shifts').select('*').eq('outlet_id', outletId).eq('status', 'open').order('start_time', { ascending: false }).limit(1),
-        insforge.database.from('transactions')
+        supabase.from('kapsters').select('*').eq('outlet_id', outletId),
+        supabase.from('services').select('*').eq('outlet_id', outletId),
+        supabase.from('products').select('*').eq('outlet_id', outletId),
+        supabase.from('profiles').select('*').eq('outlet_id', outletId),
+        supabase.from('shifts').select('*').eq('outlet_id', outletId).eq('status', 'open').order('start_time', { ascending: false }).limit(1),
+        supabase.from('transactions')
           .select('*, transaction_items(*)')
           .eq('outlet_id', outletId)
-          .gte('date', new Date(new Date().setHours(0,0,0,0)).toISOString())
       ]);
       
       if (kapstersRes.data) {

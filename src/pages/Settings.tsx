@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { Sparkles, Shield, Building, AlertTriangle, Users, Scissors, Trash2, Plus, Key, X, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { insforge } from '../lib/insforge';
+import { supabase } from '../lib/supabase';
 
 export default function Settings() {
   const { activeOutlet, clearAppStore, systemUsers, addUser, updateUser, removeUser, kapsters, addKapster, updateKapster, removeKapster } = useAppStore();
@@ -41,7 +41,7 @@ export default function Settings() {
     setIsAddingUser(true);
     
     // Register the user to Auth
-    const { data: authData, error: authError } = await insforge.auth.signUp({
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email: newUserEmail,
       password: newUserPassword
     });
@@ -53,7 +53,7 @@ export default function Settings() {
 
     if (authData?.user) {
       // Create profile in database
-      const { error: profileError } = await insforge.database.from('profiles').insert([
+      const { error: profileError } = await supabase.from('profiles').insert([
         { 
           id: authData.user.id, 
           name: newUserName, 

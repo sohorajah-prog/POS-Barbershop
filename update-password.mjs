@@ -1,12 +1,12 @@
-import { createClient } from '@insforge/sdk';
+import { createClient } from '@supabase/sdk';
 
-const insforge = createClient(
+const supabase = createClient(
   'https://app.pos-luddev.com',
   'ik_c85d1686e11524d8ca21097bd61c354e'
 );
 
 async function changeAdminPassword() {
-  const { data, error } = await insforge.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: 'admin@barbershop.com',
     password: '123456',
   });
@@ -16,7 +16,7 @@ async function changeAdminPassword() {
     process.exit(1);
   }
 
-  const { error: updateError } = await insforge.auth.updateUser({
+  const { error: updateError } = await supabase.auth.updateUser({
     password: 'D@ta2026.'
   });
 

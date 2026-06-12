@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Scissors } from 'lucide-react';
-import { insforge } from '../lib/insforge';
+import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/useAppStore';
 
 export default function Login() {
@@ -18,7 +18,7 @@ export default function Login() {
     if (!email) return toast.error('Silakan masukkan email Anda terlebih dahulu.');
     
     setIsLoading(true);
-    const { error } = await insforge.auth.sendResetPasswordEmail({ email });
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
     setIsLoading(false);
     
     if (error) {
@@ -36,28 +36,28 @@ export default function Login() {
     setIsLoading(true);
     
     // Try sign in
-    const { error } = await insforge.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
     if (error) {
       setIsLoading(false);
-      return toast.error('Login gagal: Email atau password salah.');
+      return toast.error(`Login gagal: ${error.message}`);
     }
     
     // Fetch profile and update local state so ProtectedRoute doesn't kick us out
-    const { data: userData } = await insforge.auth.getCurrentUser();
+    const { data: userData } = await supabase.auth.getUser();
     if (userData?.user) {
-      const { data: profile } = await insforge.database.from('profiles').select('*').eq('id', userData.user.id).single();
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', userData.user.id).single();
       if (profile) {
         login({ id: userData.user.id, name: profile.name, role: profile.role, outletId: profile.outlet_id });
         await useAppStore.getState().initDb();
       } else {
         // Profile is missing (maybe because RLS blocked it during sign-up), create it now!
-        const { data: outlets } = await insforge.database.from('outlets').select('id').limit(1);
+        const { data: outlets } = await supabase.from('outlets').select('id').limit(1);
         if (outlets && outlets.length > 0) {
-          await insforge.database.from('profiles').insert([
+          await supabase.from('profiles').insert([
             { id: userData.user.id, name: 'Admin Barbershop', role: 'admin', outlet_id: outlets[0].id }
           ]);
           login({ id: userData.user.id, name: 'Admin Barbershop', role: 'admin', outletId: outlets[0].id });

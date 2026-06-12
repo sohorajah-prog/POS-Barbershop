@@ -391,3 +391,16 @@ tr:hover td {
   }
 }
 
+.scrollable-cards-container {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollable-cards-container::-webkit-scrollbar {
+  display: none;
+}
+

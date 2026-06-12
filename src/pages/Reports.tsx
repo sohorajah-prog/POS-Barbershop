@@ -247,18 +247,9 @@ export default function Reports() {
       </div>
 
       {/* Summary Cards */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '16px', 
-        overflowX: 'auto', 
-        paddingBottom: '8px',
-        WebkitOverflowScrolling: 'touch',
-        msOverflowStyle: 'none',  // IE and Edge
-        scrollbarWidth: 'none' // Firefox
-      }}>
-        <style>{`.summary-cards::-webkit-scrollbar { display: none; }`}</style>
+      <div className="scrollable-cards-container">
         
-        <div className="card summary-cards" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
+        <div className="card" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Total Pendapatan</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-white)', marginTop: '8px' }}>Rp {totalRevenue.toLocaleString('id-ID')}</div>
           <div style={{ color: 'var(--color-success)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px', fontWeight: 600 }}>
@@ -266,7 +257,7 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="card summary-cards" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
+        <div className="card" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Jumlah Transaksi</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-white)', marginTop: '8px' }}>{totalCount}</div>
           <div style={{ color: 'var(--color-success)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px', fontWeight: 600 }}>
@@ -274,7 +265,7 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="card summary-cards" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
+        <div className="card" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Rata-rata Nilai Transaksi</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-white)', marginTop: '8px' }}>Rp {Math.round(avgValue).toLocaleString('id-ID')}</div>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: '8px' }}>
@@ -282,7 +273,7 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="card summary-cards" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
+        <div className="card" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Total Komisi Kapster</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-gold)', marginTop: '8px' }}>Rp {totalKomisi.toLocaleString('id-ID')}</div>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: '8px' }}>
@@ -290,7 +281,7 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="card summary-cards" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
+        <div className="card" style={{ padding: '24px', minWidth: '240px', flex: '0 0 auto' }}>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Total Tip Kapster</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-success)', marginTop: '8px' }}>Rp {totalTip.toLocaleString('id-ID')}</div>
           <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: '8px' }}>

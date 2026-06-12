@@ -54,13 +54,19 @@ export default function Login() {
         login({ id: userData.user.id, name: profile.name, role: profile.role, outletId: profile.outlet_id });
         await useAppStore.getState().initDb();
       } else {
-        // Profile is missing (maybe because RLS blocked it during sign-up), create it now!
+        // Profile is missing
         const { data: outlets } = await supabase.from('outlets').select('id').limit(1);
         if (outlets && outlets.length > 0) {
+          // Check if any profiles exist
+          const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true });
+          const isFirstUser = count === 0;
+          const newRole = isFirstUser ? 'admin' : 'cashier';
+          const newName = isFirstUser ? 'Admin Barbershop' : 'Kasir Baru';
+          
           await supabase.from('profiles').insert([
-            { id: userData.user.id, name: 'Admin Barbershop', role: 'admin', outlet_id: outlets[0].id }
+            { id: userData.user.id, name: newName, role: newRole, outlet_id: outlets[0].id }
           ]);
-          login({ id: userData.user.id, name: 'Admin Barbershop', role: 'admin', outletId: outlets[0].id });
+          login({ id: userData.user.id, name: newName, role: newRole, outletId: outlets[0].id });
           await useAppStore.getState().initDb();
         }
       }

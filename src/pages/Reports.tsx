@@ -136,20 +136,36 @@ export default function Reports() {
     doc.text(`Rp ${Math.round(avgValue).toLocaleString('id-ID')}`, 400, 120);
 
     // Table Data
-    const tableColumn = ["Tanggal", "Pelanggan", "Kapster", "Metode", "Total"];
+    const tableColumn = ["Tanggal", "Pelanggan", "Layanan", "Kapster", "Metode", "Komisi", "Tip", "Total"];
     const tableRows: any[] = [];
 
     [...filteredTransactions].reverse().forEach(trx => {
       const dateStr = new Date(trx.date).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
+      const layanans = trx.items.map(i => i.name).join(', ');
+      
       const serviceItem = trx.items.find(i => i.type === 'service');
       const kapster = kapsters.find(b => b.id === serviceItem?.kapsterId);
       const kapsterName = kapster ? kapster.name : '-';
       
+      let totalCommission = 0;
+      trx.items.forEach(item => {
+        if (item.kapsterId) {
+          if (item.commissionType === 'nominal') {
+            totalCommission += item.commissionValue || 0;
+          } else {
+            totalCommission += (item.price * item.qty) * ((item.commissionValue || 0) / 100);
+          }
+        }
+      });
+      
       const rowData = [
         dateStr,
         trx.customerName || 'Walk-in',
+        layanans,
         kapsterName,
         trx.method,
+        `Rp ${totalCommission.toLocaleString('id-ID')}`,
+        `Rp ${(trx.tip || 0).toLocaleString('id-ID')}`,
         `Rp ${trx.total.toLocaleString('id-ID')}`
       ];
       tableRows.push(rowData);
@@ -245,8 +261,11 @@ export default function Reports() {
               <th>ID Transaksi</th>
               <th>Tanggal & Waktu</th>
               <th>Pelanggan</th>
+              <th>Layanan</th>
               <th>Kapster</th>
               <th>Metode</th>
+              <th>Komisi</th>
+              <th>Tip</th>
               <th>Total</th>
               {user?.role === 'admin' && <th>Aksi</th>}
             </tr>
@@ -254,22 +273,37 @@ export default function Reports() {
           <tbody>
             {filteredTransactions.length === 0 ? (
               <tr>
-                <td colSpan={user?.role === 'admin' ? 7 : 6} style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-secondary)' }}>Belum ada histori transaksi.</td>
+                <td colSpan={user?.role === 'admin' ? 10 : 9} style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-secondary)' }}>Belum ada histori transaksi.</td>
               </tr>
             ) : (
               [...filteredTransactions].reverse().map(trx => {
+                const layanans = trx.items.map(i => i.name).join(', ');
                 // Determine kapster name from first service item
                 const serviceItem = trx.items.find(i => i.type === 'service');
                 const kapster = kapsters.find(b => b.id === serviceItem?.kapsterId);
                 const kapsterName = kapster ? kapster.name : '-';
+                
+                let totalCommission = 0;
+                trx.items.forEach(item => {
+                  if (item.kapsterId) {
+                    if (item.commissionType === 'nominal') {
+                      totalCommission += item.commissionValue || 0;
+                    } else {
+                      totalCommission += (item.price * item.qty) * ((item.commissionValue || 0) / 100);
+                    }
+                  }
+                });
                 
                 return (
                   <tr key={trx.id}>
                     <td style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>#{trx.id.substring(4)}</td>
                     <td>{new Date(trx.date).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}</td>
                     <td>{trx.customerName || 'Walk-in'}</td>
+                    <td>{layanans}</td>
                     <td>{kapsterName}</td>
                     <td>{trx.method}</td>
+                    <td>Rp {totalCommission.toLocaleString('id-ID')}</td>
+                    <td>Rp {(trx.tip || 0).toLocaleString('id-ID')}</td>
                     <td style={{ fontWeight: 600, color: 'var(--color-gold)' }}>Rp {trx.total.toLocaleString('id-ID')}</td>
                     {user?.role === 'admin' && (
                       <td style={{ textAlign: 'center' }}>

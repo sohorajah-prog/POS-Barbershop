@@ -29,7 +29,22 @@ export default function Reports() {
     return transactions.filter(t => t.date.startsWith(selectedMonth));
   }, [transactions, selectedMonth]);
 
-  const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
+  let totalRevenue = 0;
+  let totalKomisi = 0;
+  let totalTip = 0;
+  filteredTransactions.forEach(t => {
+    totalRevenue += t.total;
+    totalTip += (t.tip || 0);
+    t.items.forEach(item => {
+      if (item.kapsterId) {
+        if (item.commissionType === 'nominal') {
+          totalKomisi += item.commissionValue || 0;
+        } else {
+          totalKomisi += (item.price * item.qty) * ((item.commissionValue || 0) / 100);
+        }
+      }
+    });
+  });
   const totalCount = filteredTransactions.length;
   const avgValue = totalCount > 0 ? totalRevenue / totalCount : 0;
 
@@ -121,7 +136,7 @@ export default function Reports() {
     // Summary Box
     doc.setDrawColor(200);
     doc.setFillColor(250, 250, 250);
-    doc.roundedRect(40, 80, 515, 60, 5, 5, 'FD');
+    doc.roundedRect(40, 80, 515, 80, 5, 5, 'FD');
 
     doc.setFontSize(10);
     doc.setTextColor(100);
@@ -135,8 +150,19 @@ export default function Reports() {
     doc.text(`${totalCount}`, 255, 120);
     doc.text(`Rp ${Math.round(avgValue).toLocaleString('id-ID')}`, 400, 120);
 
+    // Second Row
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text('Total Komisi Kapster', 55, 140);
+    doc.text('Total Tip Kapster', 255, 140);
+
+    doc.setFontSize(14);
+    doc.setTextColor(0);
+    doc.text(`Rp ${totalKomisi.toLocaleString('id-ID')}`, 55, 155);
+    doc.text(`Rp ${totalTip.toLocaleString('id-ID')}`, 255, 155);
+
     // Table Data
-    const tableColumn = ["Tanggal", "Pelanggan", "Layanan", "Kapster", "Metode", "Komisi", "Tip", "Total"];
+    const tableColumn = ["Tanggal", "Layanan", "Kapster", "Metode", "Komisi", "Tip", "Total"];
     const tableRows: any[] = [];
 
     [...filteredTransactions].reverse().forEach(trx => {
@@ -160,7 +186,6 @@ export default function Reports() {
       
       const rowData = [
         dateStr,
-        trx.customerName || 'Walk-in',
         layanans,
         kapsterName,
         trx.method,
@@ -174,7 +199,7 @@ export default function Reports() {
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 160,
+      startY: 180,
       theme: 'grid',
       headStyles: { fillColor: [7, 26, 17] }, // Match primary color loosely
     });
@@ -246,6 +271,22 @@ export default function Reports() {
             Stabil
           </div>
         </div>
+
+        <div className="card" style={{ padding: '24px' }}>
+          <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Total Komisi Kapster</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-gold)', marginTop: '8px' }}>Rp {totalKomisi.toLocaleString('id-ID')}</div>
+          <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: '8px' }}>
+            Bulan ini
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '24px' }}>
+          <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Total Tip Kapster</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-success)', marginTop: '8px' }}>Rp {totalTip.toLocaleString('id-ID')}</div>
+          <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: '8px' }}>
+            Bulan ini
+          </div>
+        </div>
       </div>
 
       {/* Recent Transactions Table */}
@@ -260,7 +301,6 @@ export default function Reports() {
             <tr>
               <th>ID Transaksi</th>
               <th>Tanggal & Waktu</th>
-              <th>Pelanggan</th>
               <th>Layanan</th>
               <th>Kapster</th>
               <th>Metode</th>
@@ -298,7 +338,6 @@ export default function Reports() {
                   <tr key={trx.id}>
                     <td style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>#{trx.id.substring(4)}</td>
                     <td>{new Date(trx.date).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}</td>
-                    <td>{trx.customerName || 'Walk-in'}</td>
                     <td>{layanans}</td>
                     <td>{kapsterName}</td>
                     <td>{trx.method}</td>

@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { BarChart2, Calendar, Download, TrendingUp, Trash2 } from 'lucide-react';
+import { BarChart2, Calendar, Download, TrendingUp, Trash2, FileText } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function Reports() {
   const { transactions, kapsters, user, removeTransaction } = useAppStore();
@@ -97,6 +99,73 @@ export default function Reports() {
     document.body.removeChild(link);
   };
 
+  const handleDownloadPDF = () => {
+    if (filteredTransactions.length === 0) {
+      toast.error('Tidak ada data untuk diunduh pada bulan ini.');
+      return;
+    }
+
+    const doc = new jsPDF('p', 'pt', 'a4');
+    
+    // Header
+    doc.setFontSize(18);
+    doc.text('Laporan Penjualan', 40, 40);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    const periodText = selectedMonth === 'all' 
+      ? 'Periode: Semua Waktu' 
+      : `Periode: ${new Date(`${selectedMonth}-01`).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}`;
+    doc.text(periodText, 40, 60);
+
+    // Summary Box
+    doc.setDrawColor(200);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(40, 80, 515, 60, 5, 5, 'FD');
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text('Total Pendapatan', 55, 100);
+    doc.text('Jumlah Transaksi', 255, 100);
+    doc.text('Rata-rata Nilai', 400, 100);
+
+    doc.setFontSize(14);
+    doc.setTextColor(0);
+    doc.text(`Rp ${totalRevenue.toLocaleString('id-ID')}`, 55, 120);
+    doc.text(`${totalCount}`, 255, 120);
+    doc.text(`Rp ${Math.round(avgValue).toLocaleString('id-ID')}`, 400, 120);
+
+    // Table Data
+    const tableColumn = ["Tanggal", "Pelanggan", "Kapster", "Metode", "Total"];
+    const tableRows: any[] = [];
+
+    [...filteredTransactions].reverse().forEach(trx => {
+      const dateStr = new Date(trx.date).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
+      const serviceItem = trx.items.find(i => i.type === 'service');
+      const kapster = kapsters.find(b => b.id === serviceItem?.kapsterId);
+      const kapsterName = kapster ? kapster.name : '-';
+      
+      const rowData = [
+        dateStr,
+        trx.customerName || 'Walk-in',
+        kapsterName,
+        trx.method,
+        `Rp ${trx.total.toLocaleString('id-ID')}`
+      ];
+      tableRows.push(rowData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 160,
+      theme: 'grid',
+      headStyles: { fillColor: [7, 26, 17] }, // Match primary color loosely
+    });
+
+    doc.save(`Laporan_Penjualan_${selectedMonth}.pdf`);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%' }}>
       
@@ -125,9 +194,13 @@ export default function Reports() {
               })}
             </select>
           </div>
-          <button onClick={handleDownloadCSV} className="btn-primary" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
+          <button onClick={handleDownloadCSV} className="btn-secondary" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
             <Download size={16} />
-            Unduh Laporan
+            Unduh CSV
+          </button>
+          <button onClick={handleDownloadPDF} className="btn-primary" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
+            <FileText size={16} />
+            Unduh PDF
           </button>
         </div>
       </div>

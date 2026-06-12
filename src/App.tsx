@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAppStore } from './store/useAppStore';
@@ -25,11 +25,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   const initDb = useAppStore(state => state.initDb);
   const login = useAppStore(state => state.login);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
-    // Initial fetch
-    initDb();
-
     // Setup Auth Check
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
@@ -38,11 +36,18 @@ export default function App() {
             login({ id: user.id, name: profile.name, role: profile.role, outletId: profile.outlet_id });
             initDb();
           }
+          setIsCheckingAuth(false);
         });
+      } else {
+        setIsCheckingAuth(false);
       }
     });
 
   }, [initDb, login]);
+
+  if (isCheckingAuth) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#04100a', color: 'var(--color-gold)' }}>Memuat...</div>;
+  }
 
   return (
     <Router>
